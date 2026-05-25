@@ -8,43 +8,57 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
  
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
- 
--- Premium usernames list
-local premiumUsernames = {
-    "0Tripyxman0"
-}
- 
--- Function to check if the local player is a premium user
-local function isPremiumUser()
-    local player = LocalPlayer
-    if player then
-        for _, username in ipairs(premiumUsernames) do
-            if player.Name == username then
-                return true
-            end
+
+-- Premium key system
+local PREMIUM_KEY = "subtovaze"
+local isPremium = false
+
+-- Function to verify premium key
+local function verifyPremiumKey(inputKey)
+    return inputKey == PREMIUM_KEY
+end
+
+-- Key verification UI
+local keyWindow = OrionLib:MakeWindow({Name = "🔐 Premium Key Verification", HidePremium = true, SaveConfig = false, ConfigFolder = "FEFlingV3Key"})
+local keyTab = keyWindow:MakeTab({Name = "Enter Key", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+keyTab:AddLabel("Enter the premium key to unlock advanced features")
+
+keyTab:AddTextbox({
+    Name = "Premium Key Input",
+    Default = "",
+    TextDisappear = false,
+    Callback = function(Value)
+        if verifyPremiumKey(Value) then
+            isPremium = true
+            OrionLib:MakeNotification({
+                Name = "✅ Premium Unlocked",
+                Content = "All premium features are now available!",
+                Image = "rbxassetid://4483345998",
+                Time = 5
+            })
+            keyWindow:Destroy()
+        else
+            OrionLib:MakeNotification({
+                Name = "❌ Invalid Key",
+                Content = "The key you entered is incorrect.",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
         end
-    end
-    return false
-end
- 
--- Notify premium users
-if isPremiumUser() then
-    OrionLib:MakeNotification({
-        Name = "Premium Access",
-        Content = "Enjoy premium features, fellow teammate!",
-        Image = "rbxassetid://4483345998",
-        Time = 5
-    })
-end
+    end,
+})
+
+keyTab:AddLabel("Contact the developer for the premium key")
  
 local Window = OrionLib:MakeWindow({Name = "FE Fling v3 Pro - MM2 Chaos Edition", HidePremium = true, SaveConfig = true, ConfigFolder = "FEFlingV3"})
 
 -- Advanced Tabs Expansion
 local MM2Tab = Window:MakeTab({Name = "MM2 Game Toolkit", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local FlingTab = Window:MakeTab({Name = "Fling Matrix", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local FlingTab = Window:MakeTab({Name = "Fling Matrix", Icon = "rbxassetid://4483345998", PremiumOnly = true})
 local AntiVoidTab = Window:MakeTab({Name = "Anti-Void Zone", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local AntiFlingTab = Window:MakeTab({Name = "Anti-Fling Shield", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local MovementTab = Window:MakeTab({Name = "CFrame Movement", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local MovementTab = Window:MakeTab({Name = "CFrame Movement", Icon = "rbxassetid://4483345998", PremiumOnly = true})
 local VisualsTab = Window:MakeTab({Name = "Visuals & ESP", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local MiscTab = Window:MakeTab({Name = "Server Misc", Icon = "rbxassetid://4483345998", PremiumOnly = false})
  
@@ -75,6 +89,20 @@ local cframeSpeedValue = 5
 local flightEnabled = false
 local flightSpeed = 50
 local noclipEnabled = false
+
+-- Function to check premium status
+local function requirePremium(featureName)
+    if not isPremium then
+        OrionLib:MakeNotification({
+            Name = "🔒 Premium Required",
+            Content = featureName .. " requires premium access!",
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+        return false
+    end
+    return true
+end
 
 -- Function to safely get character and parts
 local function getCharacter()
@@ -387,8 +415,9 @@ MM2Tab:AddButton({
 })
 
 MM2Tab:AddButton({
-    Name = "Fling Active Murderer",
+    Name = "🔒 Fling Active Murderer",
     Callback = function()
+        if not requirePremium("Fling") then return end
         isFlinging = true
         targetFlingRole = "Murderer"
         targetSpecificUser = nil
@@ -396,8 +425,9 @@ MM2Tab:AddButton({
 })
 
 MM2Tab:AddButton({
-    Name = "Fling Active Sheriff",
+    Name = "🔒 Fling Active Sheriff",
     Callback = function()
+        if not requirePremium("Fling") then return end
         isFlinging = true
         targetFlingRole = "Sheriff"
         targetSpecificUser = nil
@@ -405,8 +435,9 @@ MM2Tab:AddButton({
 })
 
 MM2Tab:AddButton({
-    Name = "Kill/Fling Innocents",
+    Name = "🔒 Kill/Fling Innocents",
     Callback = function()
+        if not requirePremium("Fling") then return end
         isFlinging = true
         targetFlingRole = "AllInnocents"
         targetSpecificUser = nil
@@ -438,18 +469,20 @@ MM2Tab:AddButton({
 
 -- UNIVERSAL FLING CONFIGURATION MATRIX TAB
 PlayerDropdown = FlingTab:AddDropdown({
-    Name = "Target User Profile",
+    Name = "🔒 Target User Profile",
     Default = "",
     Options = updatePlayerList(),
     Callback = function(Value)
+        if not requirePremium("Fling") then return end
         selectedPlayer = Players:FindFirstChild(Value)
     end    
 })
  
 FlingTab:AddToggle({
-    Name = "Fling Selected Target",
+    Name = "🔒 Fling Selected Target",
     Default = false,
     Callback = function(Value)
+        if not requirePremium("Fling") then return end
         isFlinging = Value
         if isFlinging then
             if selectedPlayer then
@@ -463,10 +496,11 @@ FlingTab:AddToggle({
 })
 
 FlingTab:AddTextbox({
-    Name = "Target Username Search",
+    Name = "🔒 Target Username Search",
     Default = "",
     TextDisappear = true,
     Callback = function(Value)
+        if not requirePremium("Fling") then return end
         local input = string.lower(Value)
         for _, p in ipairs(Players:GetPlayers()) do
             if string.find(string.lower(p.Name), input) or string.find(string.lower(p.DisplayName), input) then
@@ -480,34 +514,40 @@ FlingTab:AddTextbox({
 })
  
 FlingTab:AddTextbox({
-    Name = "Fling Velocity Power",
+    Name = "🔒 Fling Velocity Power",
     Default = "99999",
     TextDisappear = false,
     Callback = function(Value)
+        if not requirePremium("Fling") then return end
         local val = tonumber(Value)
         if val then flingPower = val end
     end,
 })
  
 FlingTab:AddTextbox({
-    Name = "Fling Sweep Radius",
+    Name = "🔒 Fling Sweep Radius",
     Default = "1",
     TextDisappear = false,
     Callback = function(Value)
+        if not requirePremium("Fling") then return end
         local val = tonumber(Value)
         if val then flingRadius = val end
     end,
 })
  
 FlingTab:AddToggle({
-    Name = "Invisible Position Fling",
+    Name = "🔒 Invisible Position Fling",
     Default = false,
-    Callback = function(Value) invisFling = Value end,
+    Callback = function(Value) 
+        if not requirePremium("Fling") then return end
+        invisFling = Value 
+    end,
 })
 
 FlingTab:AddButton({
-    Name = "🛑 EMERGENCY SHUTDOWN ALL ACTION",
+    Name = "🔒 🛑 EMERGENCY SHUTDOWN ALL ACTION",
     Callback = function()
+        if not requirePremium("Fling") then return end
         isFlinging = false
         targetFlingRole = nil
         targetSpecificUser = nil
@@ -577,43 +617,58 @@ AntiFlingTab:AddButton({
 
 -- ADVANCED MOVEMENT ENGINE TAB
 MovementTab:AddToggle({
-    Name = "Enable Advanced CFrame Speed",
+    Name = "🔒 Enable Advanced CFrame Speed",
     Default = false,
-    Callback = function(Value) cframeSpeedEnabled = Value end
+    Callback = function(Value) 
+        if not requirePremium("Movement") then return end
+        cframeSpeedEnabled = Value 
+    end
 })
 
 MovementTab:AddSlider({
-    Name = "CFrame Step Multiplier",
+    Name = "🔒 CFrame Step Multiplier",
     Min = 1,
     Max = 30,
     Default = 5,
     Color = Color3.fromRGB(255, 136, 0),
     Increment = 1,
     ValueName = "Velocity Multiplier",
-    Callback = function(Value) cframeSpeedValue = Value end
+    Callback = function(Value) 
+        if not isPremium then return end
+        cframeSpeedValue = Value 
+    end
 })
 
 MovementTab:AddToggle({
-    Name = "Noclip Physics Phase",
+    Name = "🔒 Noclip Physics Phase",
     Default = false,
-    Callback = function(Value) noclipEnabled = Value end
+    Callback = function(Value) 
+        if not requirePremium("Movement") then return end
+        noclipEnabled = Value 
+    end
 })
 
 MovementTab:AddToggle({
-    Name = "6-Axis Camera Flight System",
+    Name = "🔒 6-Axis Camera Flight System",
     Default = false,
-    Callback = function(Value) flightEnabled = Value end
+    Callback = function(Value) 
+        if not requirePremium("Movement") then return end
+        flightEnabled = Value 
+    end
 })
 
 MovementTab:AddSlider({
-    Name = "Flight Cruise Velocity",
+    Name = "🔒 Flight Cruise Velocity",
     Min = 20,
     Max = 200,
     Default = 50,
     Color = Color3.fromRGB(0, 183, 255),
     Increment = 5,
     ValueName = "Studs/Sec",
-    Callback = function(Value) flightSpeed = Value end
+    Callback = function(Value) 
+        if not isPremium then return end
+        flightSpeed = Value 
+    end
 })
 
 -- VISUALS & WORLD ENGINE TAB
@@ -690,7 +745,9 @@ MiscTab:AddButton({
 -- Realtime Sync Context Update Loops
 local function runAutoRefreshDropdown()
     while true do 
-        PlayerDropdown:Refresh(updatePlayerList(), true) 
+        if PlayerDropdown then
+            PlayerDropdown:Refresh(updatePlayerList(), true)
+        end
         task.wait(2) 
     end 
 end
