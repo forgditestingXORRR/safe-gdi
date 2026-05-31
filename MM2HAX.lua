@@ -162,7 +162,6 @@ local function performFling(targetPlayer, durationOverride)
             local velocityOffset = targetHRP.Velocity * 0.125
             local predictedCFrame = targetHRP.CFrame + velocityOffset
             
-            -- Insert character sideways (90 degrees) into the target torso for optimal collision
             humanoidRootPart.CFrame = predictedCFrame * CFrame.Angles(0, 0, math.rad(90))
             humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
         else
@@ -184,7 +183,7 @@ local function flingAllPlayersLoop()
     Notify("Fling All", "Starting 500ms cycle on all players", 3)
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and isFlinging then
-            performFling(p, 0.5) -- 500ms switch
+            performFling(p, 0.5)
         end
     end
     Notify("Fling All", "Fling cycle complete", 3)
@@ -329,7 +328,6 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- TAB COMPONENTS & BUTTON INJECTIONS
 MM2Tab:AddToggle({ Name = "Role ESP (Chams)", Default = false, Callback = function(Value) roleEspEnabled = Value Notify("ESP", "Role ESP set to " .. tostring(Value)) end })
 MM2Tab:AddToggle({ Name = "Dropped Gun ESP", Default = false, Callback = function(Value) gunEspEnabled = Value Notify("ESP", "Gun ESP set to " .. tostring(Value)) end })
 MM2Tab:AddToggle({ Name = "Murderer Lock Aimbot", Default = false, Callback = function(Value) aimbotEnabled = Value Notify("Aimbot", "Murderer Lock set to " .. tostring(Value)) end })
@@ -349,25 +347,8 @@ MM2Tab:AddButton({
     end
 })
 
-MM2Tab:AddButton({
-    Name = "Fling Active Murderer",
-    Callback = function()
-        isFlinging = true
-        targetFlingRole = "Murderer"
-        targetSpecificUser = nil
-        Notify("Fling", "Targeting Murderer")
-    end
-})
-
-MM2Tab:AddButton({
-    Name = "Fling Active Sheriff",
-    Callback = function()
-        isFlinging = true
-        targetFlingRole = "Sheriff"
-        targetSpecificUser = nil
-        Notify("Fling", "Targeting Sheriff")
-    end
-})
+MM2Tab:AddButton({ Name = "Fling Active Murderer", Callback = function() isFlinging = true targetFlingRole = "Murderer" targetSpecificUser = nil Notify("Fling", "Targeting Murderer") end })
+MM2Tab:AddButton({ Name = "Fling Active Sheriff", Callback = function() isFlinging = true targetFlingRole = "Sheriff" targetSpecificUser = nil Notify("Fling", "Targeting Sheriff") end })
 
 MM2Tab:AddButton({
     Name = "Auto-Kill Murderer (Requires Gun)",
@@ -443,13 +424,7 @@ FlingTab:AddTextbox({
     end
 })
 
-FlingTab:AddButton({
-    Name = "FE Fling All (500ms Cycle)",
-    Callback = function()
-        task.spawn(flingAllPlayersLoop)
-    end
-})
-
+FlingTab:AddButton({ Name = "FE Fling All (500ms Cycle)", Callback = function() task.spawn(flingAllPlayersLoop) end })
 FlingTab:AddToggle({ Name = "Invisible Position Fling", Default = false, Callback = function(Value) invisFling = Value Notify("Fling", "Invisible Camera set to " .. tostring(Value)) end })
 
 FlingTab:AddButton({
@@ -466,21 +441,71 @@ FlingTab:AddButton({
     end
 })
 
--- FE ABILITIES TAB (New)
-FEAbilitiesTab:AddButton({
-    Name = "FE Invisible (R15 Trick)",
-    Callback = function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("LowerTorso") then
-            local root = char.LowerTorso:FindFirstChild("Root")
-            if root then
-                root:Destroy()
-                Notify("FE Invisible", "R15 Root Destroyed (Server cannot see upper body movements)")
+local seatTeleportPosition = Vector3.new(-25.95, 400, 3537.55)
+local invis_on = false
+
+FEAbilitiesTab:AddToggle({
+    Name = "FE Invisible (Seat Method)",
+    Default = false,
+    Callback = function(Value)
+        invis_on = Value
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+        
+        if invis_on then
+            if humanoidRootPart and torso then
+                local savedpos = humanoidRootPart.CFrame
+                pcall(function() character:MoveTo(seatTeleportPosition) end)
+                task.wait(0.1)
+                
+                if not character:FindFirstChild("HumanoidRootPart") or character.HumanoidRootPart.Position.Y < -50 then
+                    pcall(function() character:MoveTo(savedpos) end)
+                    Notify("Invis Failed", "Teleport to seat failed - void detected.", 3)
+                    return
+                end
+                
+                local Seat = Instance.new('Seat')
+                Seat.Parent = workspace
+                Seat.Anchored = false
+                Seat.CanCollide = false
+                Seat.Name = 'invischair'
+                Seat.Transparency = 1
+                Seat.Position = seatTeleportPosition
+                
+                local Weld = Instance.new("Weld")
+                Weld.Part0 = Seat
+                Weld.Part1 = torso
+                Weld.Parent = Seat
+                
+                task.wait(0.1)
+                pcall(function() Seat.CFrame = savedpos end)
+                
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                        part.Transparency = 0.75
+                    end
+                end
+                
+                Notify("FE Invisible", "Ghost mode activated via Seat weld.", 3)
             else
-                Notify("FE Invisible", "Already applied or unsupported rig")
+                Notify("Error", "Missing HumanoidRootPart or Torso", 3)
             end
-        elseif char and char:FindFirstChild("Torso") then
-            Notify("FE Invisible", "Requires R15 Rig!")
+        else
+            local inv = workspace:FindFirstChild('invischair')
+            if inv then
+                pcall(function() inv:Destroy() end)
+            end
+            
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                end
+            end
+            
+            Notify("FE Invisible", "Character is now fully visible.", 3)
         end
     end
 })
