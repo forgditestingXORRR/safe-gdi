@@ -7,11 +7,11 @@ local TeleportService = game:GetService("TeleportService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
--- Premium usernames list
+
 local premiumUsernames = {
     "0Tripyxman0"
 }
--- Function to check if the local player is a premium user
+
 local function isPremiumUser()
     local player = LocalPlayer
     if player then
@@ -23,24 +23,31 @@ local function isPremiumUser()
     end
     return false
 end
--- Notify premium users
-if isPremiumUser() then
+
+local function Notify(title, text, duration)
     OrionLib:MakeNotification({
-        Name = "Premium Access",
-        Content = "Enjoy premium features, fellow teammate!",
+        Name = title,
+        Content = text,
         Image = "rbxassetid://4483345998",
-        Time = 5
+        Time = duration or 3
     })
 end
+
+if isPremiumUser() then
+    Notify("Premium Access", "Enjoy premium features, fellow teammate!", 5)
+end
+
 local Window = OrionLib:MakeWindow({Name = "FE Fling v3 Pro - MM2 Chaos Edition", HidePremium = true, SaveConfig = true, ConfigFolder = "FEFlingV3"})
--- Advanced Tabs Expansion
+
 local MM2Tab = Window:MakeTab({Name = "MM2 Game Toolkit", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local FlingTab = Window:MakeTab({Name = "Fling Matrix", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local FEAbilitiesTab = Window:MakeTab({Name = "FE Abilities", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local AntiVoidTab = Window:MakeTab({Name = "Anti-Void Zone", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local AntiFlingTab = Window:MakeTab({Name = "Anti-Fling Shield", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local MovementTab = Window:MakeTab({Name = "CFrame Movement", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local VisualsTab = Window:MakeTab({Name = "Visuals & ESP", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local MiscTab = Window:MakeTab({Name = "Server Misc", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
 local selectedPlayer
 local PlayerDropdown
 local isFlinging = false
@@ -48,9 +55,7 @@ local originalCameraSubject
 local originalCharacterPos
 local isAntiFlingEnabled = false
 local flingPower = 99999
-local flingRadius = 1
 local invisFling = false
--- Feature States
 local roleEspEnabled = false
 local gunEspEnabled = false
 local aimbotEnabled = false
@@ -58,24 +63,22 @@ local autoStealGunEnabled = false
 local targetFlingRole = nil
 local targetSpecificUser = nil
 local xrayEnabled = false
-local silentAimEnabled = false
-local loopKillAllEnabled = false
--- Movement States
 local cframeSpeedEnabled = false
 local cframeSpeedValue = 5
 local flightEnabled = false
 local flightSpeed = 50
 local noclipEnabled = false
 local godModeEnabled = false
--- Function to safely get character and parts
+
 local function getCharacter()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
+
 local function getHumanoidRootPart()
     local character = getCharacter()
     return character:WaitForChild("HumanoidRootPart", 5)
 end
--- God Mode (Second Life)
+
 local function enableGodMode()
     spawn(function()
         while godModeEnabled do
@@ -99,7 +102,7 @@ LocalPlayer.CharacterAdded:Connect(function()
         enableGodMode()
     end
 end)
--- Dynamic player list updates
+
 local function updatePlayerList()
     local playerList = {}
     for _, player in ipairs(Players:GetPlayers()) do
@@ -109,92 +112,85 @@ local function updatePlayerList()
     end
     return playerList
 end
--- Helper functions to accurately parse MM2 roles
+
 local function getPlayerRole(player)
     if not player then return "Innocent" end
     local backpack = player:FindFirstChild("Backpack")
     local char = player.Character
-   
     local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or (char and char:FindFirstChild("Knife"))
     local hasGun = (backpack and backpack:FindFirstChild("Gun")) or (char and char:FindFirstChild("Gun"))
-   
-    if hasKnife then
-        return "Murderer"
-    elseif hasGun then
-        return "Sheriff"
-    else
-        return "Innocent"
-    end
+    if hasKnife then return "Murderer"
+    elseif hasGun then return "Sheriff"
+    else return "Innocent" end
 end
+
 local function getRoleColor(role)
     if role == "Murderer" then return Color3.fromRGB(255, 0, 0) end
     if role == "Sheriff" then return Color3.fromRGB(0, 85, 255) end
-    return Color3.fromRGB(0, 255, 76) -- Innocent
+    return Color3.fromRGB(0, 255, 76)
 end
--- Positional movement prediction for high-speed tracking targets
-local function getPredictedPosition(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return nil end
-    local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local humanoid = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if not rootPart or not humanoid then return nil end
-   
-    if humanoid.MoveDirection.Magnitude > 0 and humanoid.FloorMaterial ~= Enum.Material.Air then
-        return rootPart.Position + (humanoid.MoveDirection * 3.5)
-    else
-        return rootPart.Position
-    end
-end
--- Advanced Fling Core Mechanics Implementation
-local function performFling(targetPlayer)
+
+local function performFling(targetPlayer, durationOverride)
     if not targetPlayer or not targetPlayer.Character then return end
     local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then return end
+    local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
     local character = getCharacter()
     local humanoidRootPart = getHumanoidRootPart()
-    if not humanoidRootPart then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    
+    if not targetHRP or not humanoidRootPart or not humanoid or not targetHum or targetHum.Health <= 0 then return end
+    
     originalCameraSubject = Camera.CameraSubject
     originalCharacterPos = humanoidRootPart.CFrame
     if not invisFling then
-        local tHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if tHum then Camera.CameraSubject = tHum end
+        Camera.CameraSubject = targetHum
     end
-   
-    -- Linear Vector manipulation bypass loops
-    local bV = Instance.new("LinearVelocity")
-    bV.MaxForce = math.huge
-    bV.VectorVelocity = Vector3.new(flingPower, flingPower, flingPower)
-    bV.RelativeTo = Enum.ActuatorRelativeTo.World
-   
-    local bAV = Instance.new("AngularVelocity")
-    bAV.MaxTorque = math.huge
-    bAV.AngularVelocity = Vector3.new(flingPower, flingPower, flingPower)
-    bAV.RelativeTo = Enum.ActuatorRelativeTo.World
-    local attach = Instance.new("Attachment")
-    attach.Parent = humanoidRootPart
-    bV.Attachment0 = attach
-    bAV.Attachment0 = attach
-    bV.Parent = humanoidRootPart
-    bAV.Parent = humanoidRootPart
+
+    humanoid.PlatformStand = true
+
+    local bodyAngularVelocity = Instance.new("BodyAngularVelocity")
+    bodyAngularVelocity.AngularVelocity = Vector3.new(0, flingPower, 0)
+    bodyAngularVelocity.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bodyAngularVelocity.Parent = humanoidRootPart
+
+    local duration = durationOverride or 3
     local startTime = tick()
-    while isFlinging and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and (tick() - startTime < 4) do
-        local predPos = getPredictedPosition(targetPlayer)
-        if predPos and humanoidRootPart then
-            local offsetPosition = predPos + Vector3.new(math.random(-flingRadius, flingRadius), 0, math.random(-flingRadius, flingRadius))
-            humanoidRootPart.CFrame = CFrame.new(offsetPosition + Vector3.new(math.random(-1, 1)/10, 0, math.random(-1, 1)/10))
-            humanoidRootPart.Velocity = Vector3.new(flingPower, flingPower, flingPower)
+    
+    while isFlinging and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and targetHum.Health > 0 and (tick() - startTime < duration) do
+        task.wait()
+        if humanoidRootPart and targetHRP then
+            local velocityOffset = targetHRP.Velocity * 0.125
+            local predictedCFrame = targetHRP.CFrame + velocityOffset
+            
+            -- Insert character sideways (90 degrees) into the target torso for optimal collision
+            humanoidRootPart.CFrame = predictedCFrame * CFrame.Angles(0, 0, math.rad(90))
+            humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+        else
+            break
         end
-        RunService.Heartbeat:Wait()
     end
-    bV:Destroy()
-    bAV:Destroy()
-    attach:Destroy()
-   
+
+    bodyAngularVelocity:Destroy()
+    humanoid.PlatformStand = false
+    
     Camera.CameraSubject = originalCameraSubject
     humanoidRootPart.CFrame = originalCharacterPos
     humanoidRootPart.Velocity = Vector3.zero
     humanoidRootPart.RotVelocity = Vector3.zero
 end
--- Global Thread Handlers
+
+local function flingAllPlayersLoop()
+    isFlinging = true
+    Notify("Fling All", "Starting 500ms cycle on all players", 3)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and isFlinging then
+            performFling(p, 0.5) -- 500ms switch
+        end
+    end
+    Notify("Fling All", "Fling cycle complete", 3)
+    isFlinging = false
+end
+
 task.spawn(function()
     while true do
         if isFlinging and targetFlingRole then
@@ -204,17 +200,17 @@ task.spawn(function()
                     if (targetFlingRole == "Murderer" and role == "Murderer") or
                        (targetFlingRole == "Sheriff" and role == "Sheriff") or
                        (targetFlingRole == "AllInnocents" and role == "Innocent") then
-                        performFling(p)
+                        performFling(p, 3)
                     end
                 end
             end
         elseif isFlinging and targetSpecificUser then
-            performFling(targetSpecificUser)
+            performFling(targetSpecificUser, 3)
         end
         task.wait(0.1)
     end
 end)
--- Visual Tracker Thread
+
 task.spawn(function()
     while true do
         if roleEspEnabled then
@@ -243,7 +239,7 @@ task.spawn(function()
         task.wait(0.5)
     end
 end)
--- Dropped Gun Finder Thread
+
 task.spawn(function()
     while true do
         local droppedGun = Workspace:FindFirstChild("GunDrop")
@@ -262,7 +258,7 @@ task.spawn(function()
         task.wait(0.5)
     end
 end)
--- Gun Fetch Utility Execution
+
 local function stealGun()
     local droppedGun = Workspace:FindFirstChild("GunDrop")
     if droppedGun and droppedGun:IsA("BasePart") then
@@ -272,24 +268,23 @@ local function stealGun()
             hrp.CFrame = droppedGun.CFrame
             task.wait(0.2)
             hrp.CFrame = oldCFrame
+            Notify("Gun Stolen", "Teleported to dropped gun", 2)
         end
     end
 end
+
 task.spawn(function()
     while true do
-        if autoStealGunEnabled then
-            stealGun()
-        end
+        if autoStealGunEnabled then stealGun() end
         task.wait(0.3)
     end
 end)
--- Frame Update Connections (Noclip, CFrame Speed, Flight Engine, Aimbot Loops)
+
 RunService.RenderStepped:Connect(function()
     local character = LocalPlayer.Character
     local hrp = character and character:FindFirstChild("HumanoidRootPart")
     local hum = character and character:FindFirstChildOfClass("Humanoid")
    
-    -- Camera Lock Aimbot Logic
     if aimbotEnabled and character then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
@@ -300,13 +295,11 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-    -- Advanced Custom CFrame Speed Engine
     if cframeSpeedEnabled and hrp and hum then
         if hum.MoveDirection.Magnitude > 0 then
             hrp.CFrame = hrp.CFrame + (hum.MoveDirection * cframeSpeedValue * 0.1)
         end
     end
-    -- Universal Flight Matrix Engine
     if flightEnabled and hrp then
         local flightVelocity = Vector3.zero
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then flightVelocity = flightVelocity + Camera.CFrame.LookVector end
@@ -324,7 +317,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
--- Collision Phase Loop Handler
+
 RunService.Stepped:Connect(function()
     local character = LocalPlayer.Character
     if (noclipEnabled or isAntiFlingEnabled) and character then
@@ -335,74 +328,54 @@ RunService.Stepped:Connect(function()
         end
     end
 end)
---- ==========================================================
---- TAB COMPONENTS & BUTTON INJECTIONS
---- ==========================================================
--- MM2 ADVANCED MANAGEMENT TAB
-MM2Tab:AddToggle({
-    Name = "Role ESP (Chams)",
-    Default = false,
-    Callback = function(Value) roleEspEnabled = Value end
-})
-MM2Tab:AddToggle({
-    Name = "Dropped Gun ESP",
-    Default = false,
-    Callback = function(Value) gunEspEnabled = Value end
-})
-MM2Tab:AddToggle({
-    Name = "Murderer Lock Aimbot",
-    Default = false,
-    Callback = function(Value) aimbotEnabled = Value end
-})
-MM2Tab:AddButton({
-    Name = "Instantly Retrieve Gun",
-    Callback = function() stealGun() end
-})
-MM2Tab:AddToggle({
-    Name = "Auto-Collect Gun Loop",
-    Default = false,
-    Callback = function(Value) autoStealGunEnabled = Value end
-})
+
+-- TAB COMPONENTS & BUTTON INJECTIONS
+MM2Tab:AddToggle({ Name = "Role ESP (Chams)", Default = false, Callback = function(Value) roleEspEnabled = Value Notify("ESP", "Role ESP set to " .. tostring(Value)) end })
+MM2Tab:AddToggle({ Name = "Dropped Gun ESP", Default = false, Callback = function(Value) gunEspEnabled = Value Notify("ESP", "Gun ESP set to " .. tostring(Value)) end })
+MM2Tab:AddToggle({ Name = "Murderer Lock Aimbot", Default = false, Callback = function(Value) aimbotEnabled = Value Notify("Aimbot", "Murderer Lock set to " .. tostring(Value)) end })
+MM2Tab:AddButton({ Name = "Instantly Retrieve Gun", Callback = function() stealGun() end })
+MM2Tab:AddToggle({ Name = "Auto-Collect Gun Loop", Default = false, Callback = function(Value) autoStealGunEnabled = Value Notify("Auto", "Auto-Collect Gun set to " .. tostring(Value)) end })
+
 MM2Tab:AddButton({
     Name = "Teleport to Safe Lobby",
     Callback = function()
         local lobby = Workspace:FindFirstChild("Lobby") or Workspace:FindFirstChild("LobbyWorkspace")
         local spawnLoc = lobby and lobby:FindFirstChildOfClass("SpawnLocation") or Workspace:FindFirstChildOfClass("SpawnLocation")
         local hrp = getHumanoidRootPart()
-        if hrp and spawnLoc then hrp.CFrame = spawnLoc.CFrame + Vector3.new(0, 4, 0) end
+        if hrp and spawnLoc then 
+            hrp.CFrame = spawnLoc.CFrame + Vector3.new(0, 4, 0) 
+            Notify("Teleport", "Moved to Lobby")
+        end
     end
 })
+
 MM2Tab:AddButton({
     Name = "Fling Active Murderer",
     Callback = function()
         isFlinging = true
         targetFlingRole = "Murderer"
         targetSpecificUser = nil
+        Notify("Fling", "Targeting Murderer")
     end
 })
+
 MM2Tab:AddButton({
     Name = "Fling Active Sheriff",
     Callback = function()
         isFlinging = true
         targetFlingRole = "Sheriff"
         targetSpecificUser = nil
+        Notify("Fling", "Targeting Sheriff")
     end
 })
-MM2Tab:AddButton({
-    Name = "Kill/Fling Innocents",
-    Callback = function()
-        isFlinging = true
-        targetFlingRole = "AllInnocents"
-        targetSpecificUser = nil
-    end
-})
+
 MM2Tab:AddButton({
     Name = "Auto-Kill Murderer (Requires Gun)",
     Callback = function()
         local character = getCharacter()
         local tool = character:FindFirstChild("Gun") or LocalPlayer.Backpack:FindFirstChild("Gun")
         if not tool then
-            OrionLib:MakeNotification({Name = "Error", Content = "You must hold or own the Gun!", Time = 3})
+            Notify("Error", "You must hold or own the Gun!", 3)
             return
         end
         local targetMurd
@@ -415,18 +388,23 @@ MM2Tab:AddButton({
             hrp.CFrame = targetMurd.Character.HumanoidRootPart.CFrame + (targetMurd.Character.HumanoidRootPart.CFrame.LookVector * -4)
             task.wait(0.1)
             tool:Activate()
+            Notify("Auto-Kill", "Shot fired at Murderer")
+        else
+            Notify("Status", "No Murderer found")
         end
     end
 })
--- UNIVERSAL FLING CONFIGURATION MATRIX TAB
+
 PlayerDropdown = FlingTab:AddDropdown({
     Name = "Target User Profile",
     Default = "",
     Options = updatePlayerList(),
     Callback = function(Value)
         selectedPlayer = Players:FindFirstChild(Value)
+        Notify("Selection", "Target set to " .. tostring(Value))
     end
 })
+
 FlingTab:AddToggle({
     Name = "Fling Selected Target",
     Default = false,
@@ -436,12 +414,17 @@ FlingTab:AddToggle({
             if selectedPlayer then
                 targetSpecificUser = selectedPlayer
                 targetFlingRole = nil
+                Notify("Fling", "Engaging target")
             else
-                OrionLib:MakeNotification({Name = "Target Null", Content = "Select a target profile first!", Time = 3})
+                Notify("Target Null", "Select a target profile first!", 3)
+                isFlinging = false
             end
+        else
+            Notify("Fling", "Fling Stopped")
         end
     end,
 })
+
 FlingTab:AddTextbox({
     Name = "Target Username Search",
     Default = "",
@@ -453,34 +436,22 @@ FlingTab:AddTextbox({
                 isFlinging = true
                 targetSpecificUser = p
                 targetFlingRole = nil
+                Notify("Fling", "Engaged target: " .. p.Name)
                 break
             end
         end
     end
 })
-FlingTab:AddTextbox({
-    Name = "Fling Velocity Power",
-    Default = "99999",
-    TextDisappear = false,
-    Callback = function(Value)
-        local val = tonumber(Value)
-        if val then flingPower = val end
-    end,
+
+FlingTab:AddButton({
+    Name = "FE Fling All (500ms Cycle)",
+    Callback = function()
+        task.spawn(flingAllPlayersLoop)
+    end
 })
-FlingTab:AddTextbox({
-    Name = "Fling Sweep Radius",
-    Default = "1",
-    TextDisappear = false,
-    Callback = function(Value)
-        local val = tonumber(Value)
-        if val then flingRadius = val end
-    end,
-})
-FlingTab:AddToggle({
-    Name = "Invisible Position Fling",
-    Default = false,
-    Callback = function(Value) invisFling = Value end,
-})
+
+FlingTab:AddToggle({ Name = "Invisible Position Fling", Default = false, Callback = function(Value) invisFling = Value Notify("Fling", "Invisible Camera set to " .. tostring(Value)) end })
+
 FlingTab:AddButton({
     Name = "🛑 EMERGENCY SHUTDOWN ALL ACTION",
     Callback = function()
@@ -491,9 +462,64 @@ FlingTab:AddButton({
         aimbotEnabled = false
         flightEnabled = false
         cframeSpeedEnabled = false
+        Notify("SHUTDOWN", "All active systems terminated")
     end
 })
--- ANTI-VOID ZONE TAB
+
+-- FE ABILITIES TAB (New)
+FEAbilitiesTab:AddButton({
+    Name = "FE Invisible (R15 Trick)",
+    Callback = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("LowerTorso") then
+            local root = char.LowerTorso:FindFirstChild("Root")
+            if root then
+                root:Destroy()
+                Notify("FE Invisible", "R15 Root Destroyed (Server cannot see upper body movements)")
+            else
+                Notify("FE Invisible", "Already applied or unsupported rig")
+            end
+        elseif char and char:FindFirstChild("Torso") then
+            Notify("FE Invisible", "Requires R15 Rig!")
+        end
+    end
+})
+
+FEAbilitiesTab:AddToggle({
+    Name = "FE Spin (Tornado)",
+    Default = false,
+    Callback = function(Value)
+        local hrp = getHumanoidRootPart()
+        if Value and hrp then
+            local spin = Instance.new("BodyAngularVelocity")
+            spin.Name = "FESpinBody"
+            spin.MaxTorque = Vector3.new(0, math.huge, 0)
+            spin.AngularVelocity = Vector3.new(0, 50, 0)
+            spin.Parent = hrp
+            Notify("FE Spin", "Tornado Spin Enabled")
+        elseif hrp then
+            local spin = hrp:FindFirstChild("FESpinBody")
+            if spin then spin:Destroy() end
+            Notify("FE Spin", "Tornado Spin Disabled")
+        end
+    end
+})
+
+FEAbilitiesTab:AddButton({
+    Name = "FE Teleport to Random Player",
+    Callback = function()
+        local plrs = Players:GetPlayers()
+        local rand = plrs[math.random(1, #plrs)]
+        if rand ~= LocalPlayer and rand.Character and rand.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = getHumanoidRootPart()
+            if hrp then 
+                hrp.CFrame = rand.Character.HumanoidRootPart.CFrame 
+                Notify("Teleported", "Teleported to " .. rand.Name)
+            end
+        end
+    end
+})
+
 local antiVoidPart
 local function createAntiVoid()
     if antiVoidPart then return end
@@ -512,28 +538,19 @@ local function createAntiVoid()
     end
     antiVoidPart.Position = Vector3.new(0, lowestY - 20, 0)
     antiVoidPart.Parent = Workspace
+    Notify("Anti-Void", "Safety Plate Deployed")
 end
+
 local function removeAntiVoid()
     if antiVoidPart then
         antiVoidPart:Destroy()
         antiVoidPart = nil
+        Notify("Anti-Void", "Safety Plate Removed")
     end
 end
-AntiVoidTab:AddToggle({
-    Name = "Anti-Void Floor Safety Plate",
-    Default = false,
-    Callback = function(Value)
-        if Value then createAntiVoid() else removeAntiVoid() end
-    end
-})
--- ANTI-FLING COLLISION TAB
-AntiFlingTab:AddToggle({
-    Name = "Desync Anti-Fling Matrix",
-    Default = false,
-    Callback = function(Value)
-        isAntiFlingEnabled = Value
-    end
-})
+
+AntiVoidTab:AddToggle({ Name = "Anti-Void Floor Safety Plate", Default = false, Callback = function(Value) if Value then createAntiVoid() else removeAntiVoid() end end })
+AntiFlingTab:AddToggle({ Name = "Desync Anti-Fling Matrix", Default = false, Callback = function(Value) isAntiFlingEnabled = Value Notify("Anti-Fling", "Shield matrix set to " .. tostring(Value)) end })
 AntiFlingTab:AddButton({
     Name = "Instant Velocity Anchor Fix",
     Callback = function()
@@ -541,46 +558,17 @@ AntiFlingTab:AddButton({
         if hrp then
             hrp.Velocity = Vector3.zero
             hrp.RotVelocity = Vector3.zero
+            Notify("Anchored", "Velocity stabilized")
         end
     end
 })
--- ADVANCED MOVEMENT ENGINE TAB
-MovementTab:AddToggle({
-    Name = "Enable Advanced CFrame Speed",
-    Default = false,
-    Callback = function(Value) cframeSpeedEnabled = Value end
-})
-MovementTab:AddSlider({
-    Name = "CFrame Step Multiplier",
-    Min = 1,
-    Max = 30,
-    Default = 5,
-    Color = Color3.fromRGB(255, 136, 0),
-    Increment = 1,
-    ValueName = "Velocity Multiplier",
-    Callback = function(Value) cframeSpeedValue = Value end
-})
-MovementTab:AddToggle({
-    Name = "Noclip Physics Phase",
-    Default = false,
-    Callback = function(Value) noclipEnabled = Value end
-})
-MovementTab:AddToggle({
-    Name = "6-Axis Camera Flight System",
-    Default = false,
-    Callback = function(Value) flightEnabled = Value end
-})
-MovementTab:AddSlider({
-    Name = "Flight Cruise Velocity",
-    Min = 20,
-    Max = 200,
-    Default = 50,
-    Color = Color3.fromRGB(0, 183, 255),
-    Increment = 5,
-    ValueName = "Studs/Sec",
-    Callback = function(Value) flightSpeed = Value end
-})
--- VISUALS & WORLD ENGINE TAB
+
+MovementTab:AddToggle({ Name = "Enable Advanced CFrame Speed", Default = false, Callback = function(Value) cframeSpeedEnabled = Value Notify("Speed", "CFrame Speed: " .. tostring(Value)) end })
+MovementTab:AddSlider({ Name = "CFrame Step Multiplier", Min = 1, Max = 30, Default = 5, Color = Color3.fromRGB(255, 136, 0), Increment = 1, ValueName = "Velocity", Callback = function(Value) cframeSpeedValue = Value end })
+MovementTab:AddToggle({ Name = "Noclip Physics Phase", Default = false, Callback = function(Value) noclipEnabled = Value Notify("Noclip", "Phase physics set to " .. tostring(Value)) end })
+MovementTab:AddToggle({ Name = "6-Axis Camera Flight System", Default = false, Callback = function(Value) flightEnabled = Value Notify("Flight", "Flight system set to " .. tostring(Value)) end })
+MovementTab:AddSlider({ Name = "Flight Cruise Velocity", Min = 20, Max = 200, Default = 50, Color = Color3.fromRGB(0, 183, 255), Increment = 5, ValueName = "Studs/Sec", Callback = function(Value) flightSpeed = Value end })
+
 VisualsTab:AddToggle({
     Name = "Map X-Ray Framework",
     Default = false,
@@ -601,8 +589,10 @@ VisualsTab:AddToggle({
                 end
             end
         end
+        Notify("Visuals", "X-Ray framework toggled")
     end
 })
+
 VisualsTab:AddButton({
     Name = "Maximize Ambient Fullbright",
     Callback = function()
@@ -610,33 +600,16 @@ VisualsTab:AddButton({
         lighting.Ambient = Color3.fromRGB(255, 255, 255)
         lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
         lighting.Brightness = 3
+        Notify("Visuals", "Fullbright Activated")
     end
 })
--- MISC TAB Essentials
-MiscTab:AddToggle({
-    Name = "God Mode (Second Life)",
-    Default = false,
-    Callback = function(Value)
-        godModeEnabled = Value
-        if Value then
-            enableGodMode()
-        end
-    end
-})
-MiscTab:AddButton({
-    Name = "Phase Teleport to Random Player",
-    Callback = function()
-        local plrs = Players:GetPlayers()
-        local rand = plrs[math.random(1, #plrs)]
-        if rand ~= LocalPlayer and rand.Character and rand.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = getHumanoidRootPart()
-            if hrp then hrp.CFrame = rand.Character.HumanoidRootPart.CFrame end
-        end
-    end
-})
+
+MiscTab:AddToggle({ Name = "God Mode (Second Life)", Default = false, Callback = function(Value) godModeEnabled = Value if Value then enableGodMode() end Notify("Misc", "God Mode " .. tostring(Value)) end })
+
 MiscTab:AddButton({
     Name = "Server Hop Instant Reconnect",
     Callback = function()
+        Notify("Server Hop", "Finding new optimal instance...")
         local serverList = {}
         for _, v in ipairs(game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
             if v.playing < v.maxPlayers and v.id ~= game.JobId then
@@ -646,17 +619,19 @@ MiscTab:AddButton({
         if #serverList > 0 then
             TeleportService:TeleportToPlaceInstance(game.PlaceId, serverList[math.random(1, #serverList)], LocalPlayer)
         else
-            OrionLib:MakeNotification({Name = "Teleport Warning", Content = "No alternative optimal instances discovered.", Time = 3})
+            Notify("Teleport Warning", "No alternative optimal instances discovered.")
         end
     end
 })
+
 MiscTab:AddButton({
     Name = "Instant Rejoin Active Session",
     Callback = function()
+        Notify("Rejoin", "Reconnecting...")
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     end
 })
--- Realtime Sync Context Update Loops
+
 local function runAutoRefreshDropdown()
     while true do
         PlayerDropdown:Refresh(updatePlayerList(), true)
@@ -664,6 +639,7 @@ local function runAutoRefreshDropdown()
     end
 end
 task.spawn(runAutoRefreshDropdown)
+
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     newChar:WaitForChild("Humanoid")
     if isAntiFlingEnabled or noclipEnabled then
@@ -672,4 +648,5 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
         end
     end
 end)
+
 OrionLib:Init()
