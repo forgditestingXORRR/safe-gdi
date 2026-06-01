@@ -451,60 +451,94 @@ FEAbilitiesTab:AddToggle({
         invis_on = Value
         local character = LocalPlayer.Character
         if not character then return end
-        
+
         local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
         local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
-        
+
         if invis_on then
             if humanoidRootPart and torso then
                 local savedpos = humanoidRootPart.CFrame
                 pcall(function() character:MoveTo(seatTeleportPosition) end)
                 task.wait(0.1)
-                
+
                 if not character:FindFirstChild("HumanoidRootPart") or character.HumanoidRootPart.Position.Y < -50 then
-                    pcall(function() character:MoveTo(savedpos) end)
+                    pcall(function() character:MoveTo(savedpos.Position) end)
                     Notify("Invis Failed", "Teleport to seat failed - void detected.", 3)
                     return
                 end
-                
-                local Seat = Instance.new('Seat')
+
+                local Seat = Instance.new("Seat")
                 Seat.Parent = workspace
                 Seat.Anchored = false
                 Seat.CanCollide = false
-                Seat.Name = 'invischair'
+                Seat.Name = "invischair"
                 Seat.Transparency = 1
                 Seat.Position = seatTeleportPosition
-                
+
                 local Weld = Instance.new("Weld")
                 Weld.Part0 = Seat
                 Weld.Part1 = torso
                 Weld.Parent = Seat
-                
+
                 task.wait(0.1)
                 pcall(function() Seat.CFrame = savedpos end)
-                
-                for _, part in pairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                        part.Transparency = 0.75
+
+                -- Hide every visible thing on the character
+                for _, obj in pairs(character:GetDescendants()) do
+                    if obj:IsA("BasePart") then
+                        obj.Transparency = 1
+                        obj.LocalTransparencyModifier = 1
+                    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                        obj.Transparency = 1
+                    elseif obj:IsA("SpecialMesh") then
+                        -- meshes inherit part transparency, nothing extra needed
+                    elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
+                        obj.Enabled = false
                     end
                 end
-                
+
+                -- Hide accessories (hats, hair, etc.)
+                for _, acc in pairs(character:GetChildren()) do
+                    if acc:IsA("Accessory") then
+                        local handle = acc:FindFirstChild("Handle")
+                        if handle then
+                            handle.Transparency = 1
+                            handle.LocalTransparencyModifier = 1
+                        end
+                    end
+                end
+
                 Notify("FE Invisible", "Ghost mode activated via Seat weld.", 3)
             else
                 Notify("Error", "Missing HumanoidRootPart or Torso", 3)
             end
         else
-            local inv = workspace:FindFirstChild('invischair')
+            local inv = workspace:FindFirstChild("invischair")
             if inv then
                 pcall(function() inv:Destroy() end)
             end
-            
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.Transparency = 0
+
+            for _, obj in pairs(character:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    obj.Transparency = 0
+                    obj.LocalTransparencyModifier = 0
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj.Transparency = 0
+                elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
+                    obj.Enabled = true
                 end
             end
-            
+
+            for _, acc in pairs(character:GetChildren()) do
+                if acc:IsA("Accessory") then
+                    local handle = acc:FindFirstChild("Handle")
+                    if handle then
+                        handle.Transparency = 0
+                        handle.LocalTransparencyModifier = 0
+                    end
+                end
+            end
+
             Notify("FE Invisible", "Character is now fully visible.", 3)
         end
     end
