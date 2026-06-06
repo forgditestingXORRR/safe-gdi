@@ -87,6 +87,8 @@ local flightEnabled = false
 local flightSpeed = 50
 local noclipEnabled = false
 local godModeEnabled = false
+local seizureModeEnabled = false
+local fakeLagEnabled = false
 
 local function getCharacter()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -297,6 +299,32 @@ task.spawn(function()
     end
 end)
 
+task.spawn(function()
+    while true do
+        if seizureModeEnabled then
+            local hrp = getHumanoidRootPart()
+            if hrp then
+                hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(math.random(-90, 90)), math.rad(math.random(-90, 90)), math.rad(math.random(-90, 90)))
+            end
+        end
+        task.wait(0.05)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if fakeLagEnabled then
+            local hrp = getHumanoidRootPart()
+            if hrp then
+                hrp.Anchored = true
+                task.wait(math.random(1, 3) / 10)
+                hrp.Anchored = false
+            end
+        end
+        task.wait(math.random(2, 5) / 10)
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
     local character = LocalPlayer.Character
     local hrp = character and character:FindFirstChild("HumanoidRootPart")
@@ -347,7 +375,7 @@ RunService.Stepped:Connect(function()
 end)
 
 MM2Tab:AddButton({
-    Name = "📢 Reveal Roles in Chat (Sheriff & Murd)",
+    Name = "Reveal Roles in Chat (Sheriff & Murd)",
     Callback = function()
         local murdererName = "[None Detected]"
         local sheriffName = "[None Detected]"
@@ -361,7 +389,7 @@ MM2Tab:AddButton({
             end
         end
         
-        local chatMessage = "The Murderer is " .. murdererName .. " | The Sheriff is " .. sheriffName .. " "
+        local chatMessage = "[EXPOSED] The Murderer is " .. murdererName .. " | The Sheriff is " .. sheriffName
         sendChatMessage(chatMessage)
         Notify("Roles Exposed", "Message broadcasted to server chat!", 4)
     end
@@ -467,7 +495,7 @@ FlingTab:AddButton({ Name = "FE Fling All (500ms Cycle)", Callback = function() 
 FlingTab:AddToggle({ Name = "Invisible Position Fling", Default = false, Callback = function(Value) invisFling = Value Notify("Fling", "Invisible Camera set to " .. tostring(Value)) end })
 
 FlingTab:AddButton({
-    Name = "🛑 EMERGENCY SHUTDOWN ALL ACTION",
+    Name = "EMERGENCY SHUTDOWN ALL ACTION",
     Callback = function()
         isFlinging = false
         targetFlingRole = nil
@@ -476,6 +504,10 @@ FlingTab:AddButton({
         aimbotEnabled = false
         flightEnabled = false
         cframeSpeedEnabled = false
+        seizureModeEnabled = false
+        fakeLagEnabled = false
+        local hrp = getHumanoidRootPart()
+        if hrp then hrp.Anchored = false end
         Notify("SHUTDOWN", "All active systems terminated")
     end
 })
@@ -581,6 +613,51 @@ FEAbilitiesTab:AddButton({
                 Notify("Teleported", "Teleported to " .. rand.Name)
             end
         end
+    end
+})
+
+FEAbilitiesTab:AddButton({
+    Name = "FE Launch Skyward",
+    Callback = function()
+        local hrp = getHumanoidRootPart()
+        if hrp then
+            hrp.Velocity = Vector3.new(0, 750, 0)
+            Notify("FE Launch", "Launched into the sky")
+        end
+    end
+})
+
+FEAbilitiesTab:AddToggle({
+    Name = "FE Seizure Mode",
+    Default = false,
+    Callback = function(Value)
+        seizureModeEnabled = Value
+        Notify("FE Seizure", "Seizure mode set to " .. tostring(Value))
+    end
+})
+
+FEAbilitiesTab:AddToggle({
+    Name = "FE Static Float (Anchor)",
+    Default = false,
+    Callback = function(Value)
+        local hrp = getHumanoidRootPart()
+        if hrp then
+            hrp.Anchored = Value
+            Notify("FE Float", "Static float set to " .. tostring(Value))
+        end
+    end
+})
+
+FEAbilitiesTab:AddToggle({
+    Name = "FE Network Fake Lag",
+    Default = false,
+    Callback = function(Value)
+        fakeLagEnabled = Value
+        if not Value then
+            local hrp = getHumanoidRootPart()
+            if hrp then hrp.Anchored = false end
+        end
+        Notify("FE Lag", "Fake lag set to " .. tostring(Value))
     end
 })
 
