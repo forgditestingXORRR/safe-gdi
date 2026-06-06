@@ -361,7 +361,7 @@ MM2Tab:AddButton({
             end
         end
         
-        local chatMessage = "⚠️ EXPOSED: The Murderer is " .. murdererName .. " | The Sheriff is " .. sheriffName .. " ⚠️"
+        local chatMessage = "The Murderer is " .. murdererName .. " | The Sheriff is " .. sheriffName .. " "
         sendChatMessage(chatMessage)
         Notify("Roles Exposed", "Message broadcasted to server chat!", 4)
     end
