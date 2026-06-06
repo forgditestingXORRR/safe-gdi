@@ -176,7 +176,7 @@ local function performFling(targetPlayer, durationOverride)
     local duration = durationOverride or 3
     local startTime = tick()
     
-    while isFlinging vibrand targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and targetHum.Health > 0 and (tick() - startTime < duration) do
+    while isFlinging and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and targetHum.Health > 0 and (tick() - startTime < duration) do
         task.wait()
         if humanoidRootPart and targetHRP then
             local velocityOffset = targetHRP.Velocity * 0.125
@@ -377,8 +377,8 @@ end)
 MM2Tab:AddButton({
     Name = "Reveal Roles in Chat (Sheriff & Murd)",
     Callback = function()
-        local murdererName = "none"
-        local sheriffName = "none"
+        local murdererName = "[None Detected]"
+        local sheriffName = "[None Detected]"
         
         for _, p in ipairs(Players:GetPlayers()) do
             local role = getPlayerRole(p)
@@ -389,9 +389,9 @@ MM2Tab:AddButton({
             end
         end
         
-        local chatMessage = "the sheriff is " .. sheriffName .. ". murd is " .. murdererName
+        local chatMessage = " The Murderer is " .. murdererName .. " | The Sheriff is " .. sheriffName
         sendChatMessage(chatMessage)
-        Notify("Roles Exposed", "Message broadcasted to server chat", 4)
+        Notify("Roles Exposed", "Message broadcasted to server chat!", 4)
     end
 })
 
