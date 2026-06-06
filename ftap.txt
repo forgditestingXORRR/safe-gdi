@@ -1,0 +1,923 @@
+-- FTAP Pro Hub | Rayfield
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Players         = game:GetService("Players")
+local RunService      = game:GetService("RunService")
+local UserInputService= game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris          = game:GetService("Debris")
+local TweenService    = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera      = workspace.CurrentCamera
+
+-- ============================================================
+-- STATE
+-- ============================================================
+local superFlingEnabled  = true
+local antiGrabEnabled    = false
+local antiExplosionEnabled = false
+local antiRocketEnabled  = false
+local infJumpEnabled     = false
+local noclipEnabled      = false
+local cframeSpeedEnabled = false
+local cframeSpeedVal     = 5
+local flightEnabled      = false
+local flightSpeedVal     = 50
+local freezeSelfEnabled  = false
+local highFlingEnabled   = false
+local spinFlingEnabled   = false
+local flingStrength      = 850
+local jumpPowerVal       = 50
+local antiVoidEnabled    = false
+local grabAllEnabled     = false
+local grabAllTarget      = nil
+local autoFlingEnabled   = false
+local fovEnabled         = false
+local fovValue           = 70
+local originalFOV        = 70
+local flingAuraEnabled   = false
+local flingAuraRange     = 15
+
+-- Anti-Rocket state
+local rocketGroundConn   = nil
+
+-- ============================================================
+-- HELPERS
+-- ============================================================
+local function getChar()   return LocalPlayer.Character end
+local function getHRP()
+    local c = getChar()
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+local function getHum()
+    local c = getChar()
+    return c and c:FindFirstChildOfClass("Humanoid")
+end
+local function Notify(title, content, duration)
+    Rayfield:Notify({ Title = title, Content = content, Duration = duration or 3, Image = 4483345998 })
+end
+
+-- ============================================================
+-- CORE: SUPER FLING
+-- ============================================================
+workspace.ChildAdded:Connect(function(model)
+    if model.Name == "GrabParts" then
+        local grabPart = model:FindFirstChild("GrabPart")
+        local weld = grabPart and grabPart:FindFirstChildOfClass("WeldConstraint")
+        local partToImpulse = weld and weld.Part1
+
+        if partToImpulse then
+            local velocityObj = Instance.new("BodyVelocity", partToImpulse)
+            velocityObj.MaxForce = Vector3.new(0, 0, 0)
+            velocityObj.Velocity  = Vector3.zero
+
+            model:GetPropertyChangedSignal("Parent"):Connect(function()
+                if not model.Parent then
+                    if superFlingEnabled then
+                        local dir = Camera.CFrame.LookVector
+
+                        if highFlingEnabled then
+                            dir = (Camera.CFrame.LookVector + Vector3.new(0, 0.6, 0)).Unit
+                        end
+
+                        velocityObj.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                        velocityObj.Velocity  = dir * flingStrength
+
+                        if spinFlingEnabled then
+                            local bav = Instance.new("BodyAngularVelocity", partToImpulse)
+                            bav.MaxTorque     = Vector3.new(math.huge, math.huge, math.huge)
+                            bav.AngularVelocity = Vector3.new(0, 500, 0)
+                            Debris:AddItem(bav, 0.5)
+                        end
+
+                        Debris:AddItem(velocityObj, 1)
+                    else
+                        velocityObj.MaxForce = Vector3.new(0, 0, 0)
+                        Debris:AddItem(velocityObj, 0.1)
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ============================================================
+-- CORE: AUTO FLING (watches for GrabParts targeting local player)
+-- ============================================================
+workspace.ChildAdded:Connect(function(model)
+    if not autoFlingEnabled then return end
+    if model.Name ~= "GrabParts" then return end
+
+    -- Check if this grab is targeting us
+    local grabPart = model:WaitForChild("GrabPart", 1)
+    if not grabPart then return end
+
+    local weld = grabPart:FindFirstChildOfClass("WeldConstraint")
+    if not weld then return end
+
+    -- Part1 should be our HRP if we're the target
+    local hrp = getHRP()
+    if not hrp or weld.Part1 ~= hrp then return end
+
+    -- We're being grabbed — immediately apply outward fling velocity
+    task.spawn(function()
+        local bv = Instance.new("BodyVelocity", hrp)
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity  = Camera.CFrame.LookVector * flingStrength
+        Debris:AddItem(bv, 0.4)
+
+        -- Also fire struggle to break the weld server-side
+        local CE = ReplicatedStorage:FindFirstChild("CharacterEvents")
+        if CE then
+            local struggle = CE:FindFirstChild("Struggle")
+            if struggle then pcall(function() struggle:FireServer(LocalPlayer) end) end
+        end
+
+        Notify("Auto Fling", "Detected grab — auto-flung!")
+    end)
+end)
+
+-- ============================================================
+-- CORE: ANTI GRAB
+-- ============================================================
+local antiGrabConn = nil
+
+local function startAntiGrabLoop()
+    if antiGrabConn then antiGrabConn:Disconnect() antiGrabConn = nil end
+    antiGrabConn = RunService.Heartbeat:Connect(function()
+        if not antiGrabEnabled then
+            antiGrabConn:Disconnect()
+            antiGrabConn = nil
+            return
+        end
+        local hrp = getHRP()
+        local hum = getHum()
+        local BeingHeld = LocalPlayer:FindFirstChild("IsHeld")
+        if not hrp or not hum then return end
+
+        if BeingHeld and BeingHeld.Value == true then
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+
+            local rayOrigin = hrp.Position
+            local rayDir = Vector3.new(0, -100, 0)
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+            local result = workspace:Raycast(rayOrigin, rayDir, rayParams)
+            if result then
+                hrp.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0))
+            end
+
+            local CE = ReplicatedStorage:FindFirstChild("CharacterEvents")
+            if CE then
+                local StruggleEvent = CE:FindFirstChild("Struggle")
+                if StruggleEvent then
+                    pcall(function() StruggleEvent:FireServer(LocalPlayer) end)
+                end
+            end
+        end
+    end)
+end
+
+local function setupAntiGrab(char)
+    if not char then return end
+end
+
+if LocalPlayer.Character then setupAntiGrab(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char:WaitForChild("Humanoid")
+    setupAntiGrab(char)
+    if antiGrabEnabled then startAntiGrabLoop() end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.JumpPower = jumpPowerVal end
+end)
+
+-- ============================================================
+-- CORE: ANTI EXPLOSION + ANTI ROCKET (fixed)
+-- Sets BlastPressure = 0 immediately on any explosion added
+-- Anti-Rocket additionally ground-locks for 0.8s after hit
+-- ============================================================
+workspace.DescendantAdded:Connect(function(v)
+    if not v:IsA("Explosion") then return end
+
+    -- Always zero blast pressure for both toggles
+    if antiRocketEnabled or antiExplosionEnabled then
+        v.BlastPressure = 0
+        v.BlastRadius   = 0
+    end
+
+    -- Anti-Rocket: additionally lock the player to the ground
+    if antiRocketEnabled then
+        local hrp = getHRP()
+        if not hrp then return end
+
+        -- Disconnect any existing lock
+        if rocketGroundConn then
+            rocketGroundConn:Disconnect()
+            rocketGroundConn = nil
+        end
+
+        local lockUntil = tick() + 0.8
+
+        rocketGroundConn = RunService.Heartbeat:Connect(function()
+            if tick() > lockUntil then
+                rocketGroundConn:Disconnect()
+                rocketGroundConn = nil
+                return
+            end
+
+            local hrp2 = getHRP()
+            if not hrp2 then
+                rocketGroundConn:Disconnect()
+                rocketGroundConn = nil
+                return
+            end
+
+            -- Zero ALL velocity, not just upward
+            hrp2.AssemblyLinearVelocity = Vector3.zero
+            hrp2.Velocity    = Vector3.zero
+            hrp2.RotVelocity = Vector3.zero
+
+            -- Snap to ground via raycast
+            local rayParams = RaycastParams.new()
+            rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            rayParams.FilterType = Enum.RaycastFilterType.Exclude
+            local result = workspace:Raycast(hrp2.Position, Vector3.new(0, -50, 0), rayParams)
+            if result then
+                hrp2.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0))
+            end
+        end)
+    end
+end)
+
+-- ============================================================
+-- CORE: FLING AURA (proximity auto-fling anyone who gets close)
+-- ============================================================
+RunService.Heartbeat:Connect(function()
+    if not flingAuraEnabled then return end
+    local hrp = getHRP()
+    if not hrp then return end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local tHRP = p.Character:FindFirstChild("HumanoidRootPart")
+            if tHRP then
+                local dist = (hrp.Position - tHRP.Position).Magnitude
+                if dist <= flingAuraRange then
+                    -- Check no GrabParts exist already for this player
+                    local bv = tHRP:FindFirstChild("AuraFlingBV")
+                    if not bv then
+                        local newBV = Instance.new("BodyVelocity", tHRP)
+                        newBV.Name     = "AuraFlingBV"
+                        newBV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                        -- Direction: outward from our position
+                        local dir = (tHRP.Position - hrp.Position).Unit
+                        newBV.Velocity = dir * flingStrength
+                        Debris:AddItem(newBV, 0.3)
+
+                        if spinFlingEnabled then
+                            local bav = Instance.new("BodyAngularVelocity", tHRP)
+                            bav.MaxTorque     = Vector3.new(math.huge, math.huge, math.huge)
+                            bav.AngularVelocity = Vector3.new(0, 500, 0)
+                            Debris:AddItem(bav, 0.3)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ============================================================
+-- CORE: INF JUMP
+-- ============================================================
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled then
+        local hum = getHum()
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+-- ============================================================
+-- RENDER LOOP
+-- ============================================================
+RunService.RenderStepped:Connect(function(dt)
+    local hrp = getHRP()
+    local hum = getHum()
+
+    if cframeSpeedEnabled and hrp and hum then
+        if hum.MoveDirection.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * cframeSpeedVal * 0.1)
+        end
+    end
+
+    if flightEnabled and hrp then
+        local v = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W)         then v = v + Camera.CFrame.LookVector  end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S)         then v = v - Camera.CFrame.LookVector  end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A)         then v = v - Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D)         then v = v + Camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space)     then v = v + Vector3.new(0, 1, 0)      end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then v = v - Vector3.new(0, 1, 0)      end
+        hrp.Velocity = Vector3.zero
+        if v.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + (v.Unit * (flightSpeedVal / 10))
+        end
+    end
+
+    if freezeSelfEnabled and hrp then
+        hrp.Velocity               = Vector3.zero
+        hrp.RotVelocity            = Vector3.zero
+        hrp.AssemblyLinearVelocity = Vector3.zero
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    local char = getChar()
+    if noclipEnabled and char then
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = false end
+        end
+    end
+
+    if antiVoidEnabled then
+        local hrp = getHRP()
+        if hrp and hrp.Position.Y < -100 then
+            hrp.CFrame = CFrame.new(0, 50, 0)
+            Notify("Anti-Void", "Saved from void!", 2)
+        end
+    end
+end)
+
+-- Grab All loop
+task.spawn(function()
+    while true do
+        if grabAllEnabled then
+            local hrp = getHRP()
+            local hum = getHum()
+            if hrp and hum then
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        local tHRP = p.Character:FindFirstChild("HumanoidRootPart")
+                        if tHRP then
+                            local saved = hrp.CFrame
+                            hum.PlatformStand = true
+                            hrp.CFrame = tHRP.CFrame
+                            task.wait(0.03)
+                            hrp.CFrame = saved
+                            hum.PlatformStand = false
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.05)
+    end
+end)
+
+-- ============================================================
+-- RAYFIELD WINDOW
+-- ============================================================
+local Window = Rayfield:CreateWindow({
+    Name             = "FTAP Pro Hub",
+    LoadingTitle     = "FTAP Pro Hub",
+    LoadingSubtitle  = "Fling Things and People",
+    ConfigurationSaving = { Enabled = true, FileName = "FTAPProHub" },
+    Discord          = { Enabled = false },
+    KeySystem        = false
+})
+
+-- ============================================================
+-- TAB: FLING
+-- ============================================================
+local FlingTab = Window:CreateTab("Fling", 4483345998)
+
+FlingTab:CreateToggle({
+    Name         = "Super Fling",
+    CurrentValue = true,
+    Flag         = "SuperFling",
+    Callback     = function(v)
+        superFlingEnabled = v
+        Notify("Super Fling", v and "Enabled" or "Disabled")
+    end
+})
+
+FlingTab:CreateSlider({
+    Name         = "Fling Strength",
+    Range        = {100, 50000},
+    Increment    = 50,
+    Suffix       = "Power",
+    CurrentValue = 850,
+    Flag         = "FlingStrength",
+    Callback     = function(v) flingStrength = v end
+})
+
+FlingTab:CreateToggle({
+    Name         = "High Arc Fling",
+    CurrentValue = false,
+    Flag         = "HighFling",
+    Callback     = function(v)
+        highFlingEnabled = v
+        Notify("High Arc", v and "On — upward arc added" or "Off")
+    end
+})
+
+FlingTab:CreateToggle({
+    Name         = "Spin Fling",
+    CurrentValue = false,
+    Flag         = "SpinFling",
+    Callback     = function(v)
+        spinFlingEnabled = v
+        Notify("Spin Fling", v and "Objects spin on release" or "Disabled")
+    end
+})
+
+FlingTab:CreateSection("Auto & Aura")
+
+FlingTab:CreateToggle({
+    Name         = "Auto Fling (when grabbed)",
+    CurrentValue = false,
+    Flag         = "AutoFling",
+    Callback     = function(v)
+        autoFlingEnabled = v
+        Notify("Auto Fling", v and "Will fling the moment you're grabbed via GrabPart" or "Disabled")
+    end
+})
+
+FlingTab:CreateToggle({
+    Name         = "Fling Aura (proximity auto-fling)",
+    CurrentValue = false,
+    Flag         = "FlingAura",
+    Callback     = function(v)
+        flingAuraEnabled = v
+        Notify("Fling Aura", v and "Anyone within range gets flung away" or "Disabled")
+    end
+})
+
+FlingTab:CreateSlider({
+    Name         = "Aura Range",
+    Range        = {5, 100},
+    Increment    = 1,
+    Suffix       = "studs",
+    CurrentValue = 15,
+    Flag         = "AuraRange",
+    Callback     = function(v) flingAuraRange = v end
+})
+
+FlingTab:CreateSection("Manual Actions")
+
+FlingTab:CreateToggle({
+    Name         = "Grab All Players",
+    CurrentValue = false,
+    Flag         = "GrabAll",
+    Callback     = function(v)
+        grabAllEnabled = v
+        Notify("Grab All", v and "Pulling all players" or "Stopped")
+    end
+})
+
+FlingTab:CreateButton({
+    Name     = "Fling Everyone Once",
+    Callback = function()
+        local hrp = getHRP()
+        local hum = getHum()
+        if not hrp or not hum then return end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local tHRP = p.Character:FindFirstChild("HumanoidRootPart")
+                if tHRP then
+                    local saved = hrp.CFrame
+                    hum.PlatformStand = true
+                    hrp.CFrame = tHRP.CFrame * CFrame.Angles(0, 0, math.rad(90))
+                    local bav = Instance.new("BodyAngularVelocity", hrp)
+                    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                    bav.AngularVelocity = Vector3.new(0, flingStrength / 10, 0)
+                    task.wait(0.3)
+                    bav:Destroy()
+                    hum.PlatformStand = false
+                    hrp.CFrame = saved
+                    hrp.Velocity = Vector3.zero
+                end
+            end
+        end
+        Notify("Fling All", "One-shot fling sent to all players")
+    end
+})
+
+FlingTab:CreateButton({
+    Name     = "Launch Self Into Sky",
+    Callback = function()
+        local hrp = getHRP()
+        if hrp then
+            hrp.Velocity = Vector3.new(0, flingStrength * 2, 0)
+            Notify("Launch", "Sent skyward at " .. flingStrength * 2 .. " power")
+        end
+    end
+})
+
+FlingTab:CreateButton({
+    Name     = "Explode Launch Self",
+    Callback = function()
+        local hrp = getHRP()
+        if hrp then
+            hrp.Velocity = Vector3.new(
+                math.random(-flingStrength, flingStrength),
+                flingStrength,
+                math.random(-flingStrength, flingStrength)
+            )
+            Notify("Explode Launch", "Random direction blast!")
+        end
+    end
+})
+
+-- ============================================================
+-- TAB: DEFENCE
+-- ============================================================
+local DefenceTab = Window:CreateTab("Defence", 4483345998)
+
+DefenceTab:CreateToggle({
+    Name         = "Anti Grab",
+    CurrentValue = false,
+    Flag         = "AntiGrab",
+    Callback     = function(v)
+        antiGrabEnabled = v
+        if v then
+            startAntiGrabLoop()
+            Notify("Anti Grab", "Active — snaps to ground if thrown")
+        else
+            if antiGrabConn then antiGrabConn:Disconnect() antiGrabConn = nil end
+            Notify("Anti Grab", "Disabled")
+        end
+    end
+})
+
+DefenceTab:CreateToggle({
+    Name         = "Anti Rocket",
+    CurrentValue = false,
+    Flag         = "AntiRocket",
+    Callback     = function(v)
+        antiRocketEnabled = v
+        Notify("Anti Rocket", v and "Blast pressure zeroed + 0.8s ground lock on hit" or "Disabled")
+    end
+})
+
+DefenceTab:CreateToggle({
+    Name         = "Anti Explosion",
+    CurrentValue = false,
+    Flag         = "AntiExplosion",
+    Callback     = function(v)
+        antiExplosionEnabled = v
+        Notify("Anti Explosion", v and "All blast pressure and radius zeroed" or "Disabled")
+    end
+})
+
+DefenceTab:CreateToggle({
+    Name         = "Anti Void",
+    CurrentValue = false,
+    Flag         = "AntiVoid",
+    Callback     = function(v)
+        antiVoidEnabled = v
+        Notify("Anti Void", v and "Saves you below -100Y" or "Disabled")
+    end
+})
+
+DefenceTab:CreateToggle({
+    Name         = "Freeze Self",
+    CurrentValue = false,
+    Flag         = "FreezeSelf",
+    Callback     = function(v)
+        freezeSelfEnabled = v
+        Notify("Freeze Self", v and "Position locked" or "Unlocked")
+    end
+})
+
+DefenceTab:CreateToggle({
+    Name         = "Noclip",
+    CurrentValue = false,
+    Flag         = "Noclip",
+    Callback     = function(v)
+        noclipEnabled = v
+        Notify("Noclip", v and "Phase through walls" or "Disabled")
+    end
+})
+
+DefenceTab:CreateButton({
+    Name     = "Stabilise Velocity Now",
+    Callback = function()
+        local hrp = getHRP()
+        if hrp then
+            hrp.Velocity               = Vector3.zero
+            hrp.RotVelocity            = Vector3.zero
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            Notify("Stabilised", "All velocity zeroed")
+        end
+    end
+})
+
+-- ============================================================
+-- TAB: MOVEMENT
+-- ============================================================
+local MoveTab = Window:CreateTab("Movement", 4483345998)
+
+MoveTab:CreateToggle({
+    Name         = "Infinite Jump",
+    CurrentValue = false,
+    Flag         = "InfJump",
+    Callback     = function(v)
+        infJumpEnabled = v
+        Notify("Inf Jump", v and "Enabled" or "Disabled")
+    end
+})
+
+MoveTab:CreateSlider({
+    Name         = "Jump Power",
+    Range        = {50, 500},
+    Increment    = 10,
+    Suffix       = "Power",
+    CurrentValue = 50,
+    Flag         = "JumpPower",
+    Callback     = function(v)
+        jumpPowerVal = v
+        local hum = getHum()
+        if hum then hum.JumpPower = v end
+    end
+})
+
+MoveTab:CreateToggle({
+    Name         = "CFrame Speed Boost",
+    CurrentValue = false,
+    Flag         = "CFrameSpeed",
+    Callback     = function(v)
+        cframeSpeedEnabled = v
+        Notify("Speed Boost", v and "Active" or "Disabled")
+    end
+})
+
+MoveTab:CreateSlider({
+    Name         = "Speed Multiplier",
+    Range        = {1, 50},
+    Increment    = 1,
+    Suffix       = "x",
+    CurrentValue = 5,
+    Flag         = "SpeedMult",
+    Callback     = function(v) cframeSpeedVal = v end
+})
+
+MoveTab:CreateToggle({
+    Name         = "Flight (WASD + Space/Shift)",
+    CurrentValue = false,
+    Flag         = "Flight",
+    Callback     = function(v)
+        flightEnabled = v
+        local hum = getHum()
+        if hum then hum.PlatformStand = v end
+        Notify("Flight", v and "WASD to fly, Space up, Shift down" or "Disabled")
+    end
+})
+
+MoveTab:CreateSlider({
+    Name         = "Flight Speed",
+    Range        = {10, 300},
+    Increment    = 5,
+    Suffix       = "Speed",
+    CurrentValue = 50,
+    Flag         = "FlightSpeed",
+    Callback     = function(v) flightSpeedVal = v end
+})
+
+MoveTab:CreateButton({
+    Name     = "Teleport to Random Player",
+    Callback = function()
+        local list = {}
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                table.insert(list, p)
+            end
+        end
+        if #list == 0 then Notify("Error", "No players found", 2); return end
+        local pick = list[math.random(1, #list)]
+        local hrp  = getHRP()
+        if hrp then
+            hrp.CFrame = pick.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+            Notify("Teleport", "Jumped to " .. pick.Name)
+        end
+    end
+})
+
+MoveTab:CreateButton({
+    Name     = "Teleport to Map Center",
+    Callback = function()
+        local hrp = getHRP()
+        if hrp then
+            hrp.CFrame = CFrame.new(0, 10, 0)
+            Notify("Teleport", "Moved to map center")
+        end
+    end
+})
+
+-- ============================================================
+-- TAB: VISUALS
+-- ============================================================
+local VisualsTab = Window:CreateTab("Visuals", 4483345998)
+
+VisualsTab:CreateToggle({
+    Name         = "Player ESP (Highlight)",
+    CurrentValue = false,
+    Flag         = "PlayerESP",
+    Callback     = function(v)
+        task.spawn(function()
+            while v do
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        if not p.Character:FindFirstChild("FTAP_ESP") then
+                            local hl = Instance.new("Highlight")
+                            hl.Name             = "FTAP_ESP"
+                            hl.FillColor        = Color3.fromRGB(255, 50, 50)
+                            hl.OutlineColor     = Color3.fromRGB(255, 255, 255)
+                            hl.FillTransparency = 0.4
+                            hl.Parent           = p.Character
+                        end
+                    end
+                end
+                task.wait(0.5)
+            end
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Character and p.Character:FindFirstChild("FTAP_ESP") then
+                    p.Character.FTAP_ESP:Destroy()
+                end
+            end
+        end)
+        Notify("ESP", v and "Highlighting all players" or "Disabled")
+    end
+})
+
+VisualsTab:CreateToggle({
+    Name         = "Fullbright",
+    CurrentValue = false,
+    Flag         = "Fullbright",
+    Callback     = function(v)
+        local l = game:GetService("Lighting")
+        if v then
+            l.Ambient        = Color3.fromRGB(255, 255, 255)
+            l.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+            l.Brightness     = 3
+            Notify("Fullbright", "Max lighting applied")
+        else
+            l.Ambient        = Color3.fromRGB(127, 127, 127)
+            l.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+            l.Brightness     = 1
+            Notify("Fullbright", "Lighting restored")
+        end
+    end
+})
+
+VisualsTab:CreateToggle({
+    Name         = "Custom FOV",
+    CurrentValue = false,
+    Flag         = "CustomFOV",
+    Callback     = function(v)
+        fovEnabled = v
+        if v then
+            originalFOV = Camera.FieldOfView
+            Camera.FieldOfView = fovValue
+            Notify("FOV", "Set to " .. fovValue)
+        else
+            Camera.FieldOfView = originalFOV
+            Notify("FOV", "Restored to " .. originalFOV)
+        end
+    end
+})
+
+VisualsTab:CreateSlider({
+    Name         = "FOV Value",
+    Range        = {30, 120},
+    Increment    = 1,
+    Suffix       = "°",
+    CurrentValue = 70,
+    Flag         = "FOVValue",
+    Callback     = function(v)
+        fovValue = v
+        if fovEnabled then Camera.FieldOfView = v end
+    end
+})
+
+VisualsTab:CreateButton({
+    Name     = "Show All Player Names",
+    Callback = function()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                local head = p.Character:FindFirstChild("Head")
+                if head and not head:FindFirstChild("FTAP_NameTag") then
+                    local bb = Instance.new("BillboardGui", head)
+                    bb.Name        = "FTAP_NameTag"
+                    bb.Size        = UDim2.new(0, 100, 0, 40)
+                    bb.StudsOffset = Vector3.new(0, 3, 0)
+                    bb.AlwaysOnTop = true
+                    local lbl      = Instance.new("TextLabel", bb)
+                    lbl.Size       = UDim2.new(1, 0, 1, 0)
+                    lbl.BackgroundTransparency = 1
+                    lbl.Text       = p.Name
+                    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    lbl.TextStrokeTransparency = 0
+                    lbl.Font       = Enum.Font.GothamBold
+                    lbl.TextScaled = true
+                end
+            end
+        end
+        Notify("Name Tags", "Applied to all players")
+    end
+})
+
+-- ============================================================
+-- TAB: MISC
+-- ============================================================
+local MiscTab = Window:CreateTab("Misc", 4483345998)
+
+MiscTab:CreateButton({
+    Name     = "Reset Character",
+    Callback = function()
+        local hum = getHum()
+        if hum then hum.Health = 0; Notify("Reset", "Character reset") end
+    end
+})
+
+MiscTab:CreateButton({
+    Name     = "Copy My Position to Clipboard",
+    Callback = function()
+        local hrp = getHRP()
+        if hrp then
+            local p = hrp.Position
+            setclipboard(string.format("Vector3.new(%.2f, %.2f, %.2f)", p.X, p.Y, p.Z))
+            Notify("Position Copied", string.format("%.1f, %.1f, %.1f", p.X, p.Y, p.Z))
+        end
+    end
+})
+
+MiscTab:CreateButton({
+    Name     = "Remove All Highlights",
+    Callback = function()
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                for _, obj in pairs(p.Character:GetDescendants()) do
+                    if obj:IsA("Highlight") then obj:Destroy() end
+                end
+            end
+        end
+        Notify("Cleaned", "All highlights removed")
+    end
+})
+
+MiscTab:CreateButton({
+    Name     = "Kill All BodyMovers on Self",
+    Callback = function()
+        local hrp = getHRP()
+        if hrp then
+            for _, obj in pairs(hrp:GetChildren()) do
+                if obj:IsA("BodyVelocity") or obj:IsA("BodyAngularVelocity")
+                or obj:IsA("BodyForce") or obj:IsA("BodyPosition") then
+                    obj:Destroy()
+                end
+            end
+            Notify("Cleaned", "All body movers removed from HRP")
+        end
+    end
+})
+
+MiscTab:CreateButton({
+    Name     = "Emergency Stop All",
+    Callback = function()
+        superFlingEnabled    = false
+        antiGrabEnabled      = false
+        grabAllEnabled       = false
+        flightEnabled        = false
+        cframeSpeedEnabled   = false
+        freezeSelfEnabled    = false
+        noclipEnabled        = false
+        infJumpEnabled       = false
+        highFlingEnabled     = false
+        spinFlingEnabled     = false
+        antiVoidEnabled      = false
+        antiExplosionEnabled = false
+        antiRocketEnabled    = false
+        fovEnabled           = false
+        autoFlingEnabled     = false
+        flingAuraEnabled     = false
+        if antiGrabConn then antiGrabConn:Disconnect() antiGrabConn = nil end
+        if rocketGroundConn then rocketGroundConn:Disconnect() rocketGroundConn = nil end
+        Camera.FieldOfView = originalFOV
+        local hum = getHum()
+        if hum then hum.PlatformStand = false end
+        local hrp = getHRP()
+        if hrp then
+            hrp.Velocity               = Vector3.zero
+            hrp.RotVelocity            = Vector3.zero
+            hrp.AssemblyLinearVelocity = Vector3.zero
+        end
+        Notify("EMERGENCY STOP", "All systems disabled and velocity zeroed")
+    end
+})
