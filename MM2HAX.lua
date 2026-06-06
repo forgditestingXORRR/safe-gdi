@@ -4,6 +4,8 @@ local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
@@ -31,6 +33,22 @@ local function Notify(title, text, duration)
         Image = "rbxassetid://4483345998",
         Time = duration or 3
     })
+end
+
+local function sendChatMessage(msg)
+    pcall(function()
+        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+            local textChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+            if textChannel then
+                textChannel:SendAsync(msg)
+            end
+        else
+            local sayMsgEvent = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+            if sayMsgEvent and sayMsgEvent:FindFirstChild("SayMessageRequest") then
+                sayMsgEvent.SayMessageRequest:FireServer(msg, "All")
+            end
+        end
+    end)
 end
 
 if isPremiumUser() then
@@ -327,6 +345,27 @@ RunService.Stepped:Connect(function()
         end
     end
 end)
+
+MM2Tab:AddButton({
+    Name = "📢 Reveal Roles in Chat (Sheriff & Murd)",
+    Callback = function()
+        local murdererName = "[None Detected]"
+        local sheriffName = "[None Detected]"
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            local role = getPlayerRole(p)
+            if role == "Murderer" then
+                murdererName = p.Name
+            elseif role == "Sheriff" then
+                sheriffName = p.Name
+            end
+        end
+        
+        local chatMessage = "⚠️ EXPOSED: The Murderer is " .. murdererName .. " | The Sheriff is " .. sheriffName .. " ⚠️"
+        sendChatMessage(chatMessage)
+        Notify("Roles Exposed", "Message broadcasted to server chat!", 4)
+    end
+})
 
 MM2Tab:AddToggle({ Name = "Role ESP (Chams)", Default = false, Callback = function(Value) roleEspEnabled = Value Notify("ESP", "Role ESP set to " .. tostring(Value)) end })
 MM2Tab:AddToggle({ Name = "Dropped Gun ESP", Default = false, Callback = function(Value) gunEspEnabled = Value Notify("ESP", "Gun ESP set to " .. tostring(Value)) end })
