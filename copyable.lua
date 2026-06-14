@@ -20,7 +20,14 @@ for _, v in pairs(workspace:GetChildren()) do
         break
     end
 end
-local _7 = {K = 1e3, M = 1e6, B = 1e9, T = 1e12, Qd = 1e15, Qn = 1e18, Sx = 1e21, Sxd = 1e21, Sp = 1e24, Oc = 1e27, No = 1e30, Dc = 1e33}
+
+-- Fixed and expanded suffix table to properly handle large values
+local _7 = {
+    K = 1e3, M = 1e6, B = 1e9, T = 1e12, 
+    Qd = 1e15, Qn = 1e18, Sx = 1e21, Sp = 1e24, 
+    Oc = 1e27, No = 1e30, Dc = 1e33, UDc = 1e36, DDc = 1e39
+}
+
 local function _8(str)
     local c = str:gsub("[\226\128\128-\226\128\143]", "")
     local m, s = c:match("\37\36\40\91\37\100\37\44\37\46\93\43\41\40\37\97\42\41")
@@ -28,13 +35,13 @@ local function _8(str)
     local n = tonumber((m:gsub("\44", "")))
     if not n then return nil end
     if s == "" then return n end
+    
+    -- Clean suffix casing
+    s = s:sub(1,1):upper() .. s:sub(2):lower()
     local mult = _7[s]
-    if not mult then
-        s = s:sub(1,1):upper() .. s:sub(2):lower()
-        mult = _7[s]
-    end
-    return mult and (n * mult) or n
+    return mult and (n * mult) or nil
 end
+
 local _9 = _6 and _6:FindFirstChild("\80\117\114\99\104\97\115\101\115")
 if _6 and _6:FindFirstChild("\82\101\109\111\116\101\115") and _6.Remotes:FindFirstChild("\80\104\111\110\101\79\102\102\101\114") then
     _6.Remotes.PhoneOffer.OnClientEvent:Connect(function()
@@ -110,7 +117,8 @@ local _10 = _3:CreateToggle({
                                             local prc = _8(btn.Button.Gui.Price.Text)
                                             local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
                                             
-                                            local affordable = prc and csh and prc <= csh
+                                            -- Double validation check: ensure value calculation is successful and affordable
+                                            local affordable = (prc ~= nil) and (csh ~= nil) and (prc <= csh)
                                             updateESP(btn.Button, affordable)
 
                                             if affordable and getgenv().farmsettings.purchase then
@@ -129,7 +137,7 @@ local _10 = _3:CreateToggle({
                                         local prc = _8(z.Button.Gui.Price.Text)
                                         local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
                                         
-                                        local affordable = prc and csh and prc <= csh
+                                        local affordable = (prc ~= nil) and (csh ~= nil) and (prc <= csh)
                                         updateESP(z.Button, affordable)
 
                                         if affordable and getgenv().farmsettings.purchase then
