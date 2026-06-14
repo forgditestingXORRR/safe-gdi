@@ -49,6 +49,8 @@ local _10 = _3:CreateToggle({
         getgenv().farming = val
         if not getgenv().farming or not _6 then return end
         local st = _6:FindFirstChild("\86\97\108\117\101\115") and _6.Values:FindFirstChild("\73\110\99\111\109\101") and _6.Values.Income:FindFirstChild("\83\116\114\101\97\109\115")
+        
+        -- Loop 1: Income Streams
         task.spawn(function()
             while getgenv().farming and _6 and st do
                 if getgenv().farmsettings.collect then
@@ -61,6 +63,24 @@ local _10 = _3:CreateToggle({
                 task.wait(0.1)
             end
         end)
+        
+        -- Loop 2: Insta-Upgrade (Separated and optimized for instant triggers)
+        task.spawn(function()
+            while getgenv().farming and _6 and _9 do
+                pcall(function()
+                    if not getgenv().farmsettings.upgrade then return end
+                    for _, fld in pairs(_9:GetChildren()) do
+                        local upg = fld:FindFirstChild(fld.Name)
+                        if upg and upg:GetAttribute("\69\110\97\98\108\101\100") and upg:FindFirstChild(fld.Name) and upg[fld.Name]:FindFirstChild("\85\112\103\114\97\100\101") then
+                            upg[fld.Name].Upgrade:InvokeServer(1)
+                        end
+                    end
+                end)
+                task.wait() -- Minimal delay for maximum speed
+            end
+        end)
+
+        -- Loop 3: Standard Purchases & World Items
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
@@ -88,15 +108,6 @@ local _10 = _3:CreateToggle({
                                     end
                                 end
                             end
-                        end
-                    end
-                end)
-                pcall(function()
-                    if not getgenv().farmsettings.upgrade then return end
-                    for _, fld in pairs(_9:GetChildren()) do
-                        local upg = fld:FindFirstChild(fld.Name)
-                        if upg and upg:GetAttribute("\69\110\97\98\108\101\100") and upg:FindFirstChild(fld.Name) and upg[fld.Name]:FindFirstChild("\85\112\103\114\97\100\101") then
-                            upg[fld.Name].Upgrade:InvokeServer(1)
                         end
                     end
                 end)
@@ -129,13 +140,13 @@ local _10 = _3:CreateToggle({
                         end
                     end
                 end)
-                task.wait(0.5)
+                task.wait(0.4)
             end
         end)
     end
 })
 local _11 = _3:CreateLabel("\83\101\116\116\105\110\103\115\58")
-local _12 = _3:CreateToggle({Name = "\65\117\116\111\32\80\117\114\99\104\97\115\101", CurrentValue = true, Flag = "\65\117\116\111\80\117\114\99\104\97\115\101", Callback = function(v) getgenv().farmsettings.purchase = v end})
+local _12 = _3:CreateToggle({Name = "\65\117\116\102\32\80\117\114\99\104\97\115\101", CurrentValue = true, Flag = "\65\117\116\111\80\117\114\99\104\97\115\101", Callback = function(v) getgenv().farmsettings.purchase = v end})
 local _13 = _3:CreateToggle({Name = "\65\117\116\111\32\67\111\108\108\101\99\116", CurrentValue = true, Flag = "\65\117\116\111\67\111\108\108\101\99\116", Callback = function(v) getgenv().farmsettings.collect = v end})
 local _14 = _3:CreateToggle({Name = "\65\117\116\111\32\85\112\103\114\97\100\101", CurrentValue = true, Flag = "\65\117\116\111\85\112\103\114\97\100\101", Callback = function(v) getgenv().farmsettings.upgrade = v end})
 local _15 = _3:CreateToggle({Name = "\65\117\116\111\32\67\97\115\104\32\68\114\111\112", CurrentValue = true, Flag = "\65\117\116\111\67\97\115\104\68\114\111\112", Callback = function(v) getgenv().farmsettings.cashdrop = v end})
