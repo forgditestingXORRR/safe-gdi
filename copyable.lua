@@ -8,7 +8,7 @@ local _2 = _1:CreateWindow({
     KeySystem = false,
     KeySettings = {Title = "\85\110\116\105\116\108\101\100", Subtitle = "\75\101\121", Note = "", FileName = "\75\101\121", SaveKey = true, GrabKeyFromUrl = "", Key = {"\72\101\108\108\111"}}
 })
-local _3 = _2:CreateTab("\65\117\116\111\102\97\114\109", 109121102062195)
+local _3 = _2:CreateTab("\65\117\116\102\97\114\109", 109121102062195)
 local _4 = _2:CreateTab("\83\101\116\116\105\110\103\115", 99579688577014)
 local _5 = game:GetService("\80\108\97\121\101\114\115").LocalPlayer
 getgenv().farming = false
@@ -112,14 +112,13 @@ local _10 = _3:CreateToggle({
             end
         end)
 
-        -- Rewritten loop to prioritize cheapest to highest purchases
+        -- Optimized fast purchasing loop (Cheapest -> Highest)
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
                     local validButtons = {}
                     local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
 
-                    -- Step 1: Scan and gather valid targets
                     for _, fld in pairs(_9:GetChildren()) do
                         if fld:FindFirstChild("\66\117\116\116\111\110\115") then
                             for _, z in pairs(fld.Buttons:GetChildren()) do
@@ -146,24 +145,20 @@ local _10 = _3:CreateToggle({
                         end
                     end
 
-                    -- Step 2: Sort gathered elements from cheapest to most expensive
                     table.sort(validButtons, function(a, b)
                         return a.price < b.price
                     end)
 
-                    -- Step 3: Execute teleport and purchase sequential operations
                     if #validButtons > 0 and getgenv().farmsettings.purchase then
                         for _, item in ipairs(validButtons) do
-                            -- Re-verify cash balance dynamically before finalizing a purchase transaction
                             local currentCash = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
                             if currentCash and item.price <= currentCash then
                                 if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
                                     _5.Character.HumanoidRootPart.CFrame = item.instance.CFrame + Vector3.new(0, 2, 0)
-                                    task.wait(0.05)
+                                    task.wait() -- Micro-delay for rapid engine processing (~1ms environment limit)
                                 end
                                 if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
                                     firetouchinterest(_5.Character.Head, item.instance, true) 
-                                    task.wait() 
                                     firetouchinterest(_5.Character.Head, item.instance, false)
                                 end
                             end
@@ -177,7 +172,7 @@ local _10 = _3:CreateToggle({
                     if cd then
                         for _, v in pairs(cd:GetChildren()) do
                             if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
-                                firetouchinterest(_5.Character.Head, v, true) task.wait() firetouchinterest(_5.Character.Head, v, false)
+                                firetouchinterest(_5.Character.Head, v, true) firetouchinterest(_5.Character.Head, v, false)
                             end
                         end
                     end
@@ -193,14 +188,13 @@ local _10 = _3:CreateToggle({
                                     local det = pt and pt:FindFirstChild("\67\108\105\99\107\68\101\116\101\99\116\111\114")
                                     if det then
                                         fireclickdetector(det)
-                                        task.wait()
                                     end
                                 end
                             end
                         end
                     end
                 end)
-                task.wait(0.2)
+                task.wait() -- Scan cycle optimized for rapid loop iteration
             end
         end)
     end
