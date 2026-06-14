@@ -12,7 +12,7 @@ local _3 = _2:CreateTab("\65\117\116\111\102\97\114\109", 109121102062195)
 local _4 = _2:CreateTab("\83\101\116\116\105\110\103\115", 99579688577014)
 local _5 = game:GetService("\80\108\97\121\101\114\115").LocalPlayer
 getgenv().farming = false
-getgenv().farmsettings = {purchase = true, upgrade = true, collect = true, cashdrop = true, fruit = true}
+getgenv().farmsettings = {purchase = true, upgrade = true, collect = true, cashdrop = true, fruit = true, buttonesp = true, buttontp = false}
 local _6
 for _, v in pairs(workspace:GetChildren()) do
     if v.Name:find("\84\121\99\111\111\110") and v:FindFirstChild("\79\119\110\101\114") and v.Owner.Value == _5 then
@@ -41,6 +41,27 @@ if _6 and _6:FindFirstChild("\82\101\109\111\116\101\115") and _6.Remotes:FindFi
         if getgenv().farming then _6.Remotes.PhoneOffer:FireServer("\65\99\99\101\112\116") end
     end)
 end
+
+-- ESP Management Helper
+local function updateESP(buttonInstance, shouldDisplay)
+    local existing = buttonInstance:FindFirstChild("ButtonESP")
+    if shouldDisplay and getgenv().farmsettings.buttonesp then
+        if not existing then
+            local box = Instance.new("BoxHandleAdornment")
+            box.Name = "ButtonESP"
+            box.Size = (buttonInstance:IsA("Model") and buttonInstance:GetExtentsSize()) or buttonInstance.Size + Vector3.new(0.1, 0.1, 0.1)
+            box.Color3 = Color3.fromRGB(0, 255, 128)
+            box.AlwaysOnTop = true
+            box.ZIndex = 5
+            box.Adornee = buttonInstance
+            box.Transparency = 0.5
+            box.Parent = buttonInstance
+        end
+    else
+        if existing then existing:Destroy() end
+    end
+end
+
 local _10 = _3:CreateToggle({
     Name = "\65\117\116\111\102\97\114\109",
     CurrentValue = false,
@@ -64,7 +85,7 @@ local _10 = _3:CreateToggle({
             end
         end)
         
-        -- Loop 2: Insta-Upgrade (Separated and optimized for instant triggers)
+        -- Loop 2: Insta-Upgrade
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
@@ -76,25 +97,36 @@ local _10 = _3:CreateToggle({
                         end
                     end
                 end)
-                task.wait() -- Minimal delay for maximum speed
+                task.wait()
             end
         end)
 
-        -- Loop 3: Standard Purchases & World Items
+        -- Loop 3: Standard Purchases, World Items, ESP, and Teleporting
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
-                    if not getgenv().farmsettings.purchase then return end
                     for _, fld in pairs(_9:GetChildren()) do
                         if fld:FindFirstChild("\66\117\116\116\111\110\115") then
                             for _, z in pairs(fld.Buttons:GetChildren()) do
+                                local targetBtn = nil
                                 if z:IsA("\70\111\108\100\101\114") then
                                     for _, btn in pairs(z:GetChildren()) do
                                         if btn:GetAttribute("\83\104\111\119\110") and btn:GetAttribute("\69\110\97\98\108\101\100") and not btn:GetAttribute("\80\117\114\99\104\97\115\101\100") and btn:FindFirstChild("\66\117\116\116\111\110") and btn.Button:FindFirstChild("\71\117\105") and btn.Button.Gui:FindFirstChild("\80\114\105\99\101") then
                                             local prc = _8(btn.Button.Gui.Price.Text)
                                             local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
-                                            if prc and csh and prc <= csh and _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
-                                                firetouchinterest(_5.Character.Head, btn.Button, true) task.wait() firetouchinterest(_5.Character.Head, btn.Button, false)
+                                            
+                                            local affordable = prc and csh and prc <= csh
+                                            updateESP(btn.Button, affordable)
+
+                                            if affordable and getgenv().farmsettings.purchase then
+                                                targetBtn = btn.Button
+                                                if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
+                                                    _5.Character.HumanoidRootPart.CFrame = btn.Button.CFrame + Vector3.new(0, 2, 0)
+                                                    task.wait(0.05)
+                                                end
+                                                if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
+                                                    firetouchinterest(_5.Character.Head, btn.Button, true) task.wait() firetouchinterest(_5.Character.Head, btn.Button, false)
+                                                end
                                             end
                                         end
                                     end
@@ -102,8 +134,18 @@ local _10 = _3:CreateToggle({
                                     if z:GetAttribute("\83\104\111\119\110") and z:GetAttribute("\69\110\97\98\108\101\100") and not z:GetAttribute("\80\117\114\99\104\97\115\101\100") and z:FindFirstChild("\66\117\116\116\111\110") and z.Button:FindFirstChild("\71\117\105") and z.Button.Gui:FindFirstChild("\80\114\105\99\101") then
                                         local prc = _8(z.Button.Gui.Price.Text)
                                         local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
-                                        if prc and csh and prc <= csh and _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
-                                            firetouchinterest(_5.Character.Head, z.Button, true) task.wait() firetouchinterest(_5.Character.Head, z.Button, false)
+                                        
+                                        local affordable = prc and csh and prc <= csh
+                                        updateESP(z.Button, affordable)
+
+                                        if affordable and getgenv().farmsettings.purchase then
+                                            if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
+                                                _5.Character.HumanoidRootPart.CFrame = z.Button.CFrame + Vector3.new(0, 2, 0)
+                                                task.wait(0.05)
+                                            end
+                                            if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
+                                                firetouchinterest(_5.Character.Head, z.Button, true) task.wait() firetouchinterest(_5.Character.Head, z.Button, false)
+                                            end
                                         end
                                     end
                                 end
@@ -140,17 +182,22 @@ local _10 = _3:CreateToggle({
                         end
                     end
                 end)
-                task.wait(0.4)
+                task.wait(0.2)
             end
         end)
     end
 })
 local _11 = _3:CreateLabel("\83\101\116\116\105\110\103\115\58")
-local _12 = _3:CreateToggle({Name = "\65\117\116\102\32\80\117\114\99\104\97\115\101", CurrentValue = true, Flag = "\65\117\116\111\80\117\114\99\104\97\115\101", Callback = function(v) getgenv().farmsettings.purchase = v end})
+local _12 = _3:CreateToggle({Name = "\65\117\116\111\32\80\117\114\99\104\97\115\101", CurrentValue = true, Flag = "\65\117\116\111\80\117\114\99\104\97\115\101", Callback = function(v) getgenv().farmsettings.purchase = v end})
 local _13 = _3:CreateToggle({Name = "\65\117\116\111\32\67\111\108\108\101\99\116", CurrentValue = true, Flag = "\65\117\116\111\67\111\108\108\101\99\116", Callback = function(v) getgenv().farmsettings.collect = v end})
 local _14 = _3:CreateToggle({Name = "\65\117\116\111\32\85\112\103\114\97\100\101", CurrentValue = true, Flag = "\65\117\116\111\85\112\103\114\97\100\101", Callback = function(v) getgenv().farmsettings.upgrade = v end})
 local _15 = _3:CreateToggle({Name = "\65\117\116\111\32\67\97\115\104\32\68\114\111\112", CurrentValue = true, Flag = "\65\117\116\111\67\97\115\104\68\114\111\112", Callback = function(v) getgenv().farmsettings.cashdrop = v end})
 local _16 = _3:CreateToggle({Name = "\65\117\116\111\32\80\105\101\107\117\112\32\70\114\117\105\116", CurrentValue = true, Flag = "\65\117\116\111\80\105\99\107\117\112\70\114\117\105\116", Callback = function(v) getgenv().farmsettings.fruit = v end})
+
+-- New UI Additions
+local _19 = _3:CreateToggle({Name = "\66\117\116\116\111\110\32\69\83\80\32\40\65\102\102\111\114\100\97\98\108\101\41", CurrentValue = true, Flag = "\66\117\116\116\111\110\69\83\80", Callback = function(v) getgenv().farmsettings.buttonesp = v end})
+local _20 = _3:CreateToggle({Name = "\65\117\116\111\32\84\80\32\116\111\32\66\117\116\116\111\110", CurrentValue = false, Flag = "\65\117\116\111\84\80\66\117\116\116\111\110", Callback = function(v) getgenv().farmsettings.buttontp = v end})
+
 getgenv().antiafk = true
 _5.Idled:Connect(function()
     if getgenv().antiafk then
