@@ -21,25 +21,32 @@ for _, v in pairs(workspace:GetChildren()) do
     end
 end
 
--- Fixed and expanded suffix table to properly handle large values
 local _7 = {
-    K = 1e3, M = 1e6, B = 1e9, T = 1e12, 
-    Qd = 1e15, Qn = 1e18, Sx = 1e21, Sp = 1e24, 
-    Oc = 1e27, No = 1e30, Dc = 1e33, UDc = 1e36, DDc = 1e39
+    k = 1e3, m = 1e6, b = 1e9, t = 1e12, 
+    qd = 1e15, qn = 1e18, sx = 1e21, sp = 1e24, 
+    oc = 1e27, no = 1e30, dc = 1e33,
+    thousand = 1e3, million = 1e6, billion = 1e9, trillion = 1e12,
+    quadrillion = 1e15, quintillion = 1e18, sextillion = 1e21, septillion = 1e24,
+    octillion = 1e27, nonillion = 1e30, decillion = 1e33
 }
 
 local function _8(str)
-    local c = str:gsub("[\226\128\128-\226\128\143]", "")
-    local m, s = c:match("\37\36\40\91\37\100\37\44\37\46\93\43\41\40\37\97\42\41")
-    if not m then return nil end
-    local n = tonumber((m:gsub("\44", "")))
-    if not n then return nil end
-    if s == "" then return n end
+    if not str then return nil end
+    local cleanStr = tostring(str):lower():gsub(",", ""):gsub("%$", "")
+    local numStr, suffix = cleanStr:match("(%d+%.?%d*)%s*(%a*)")
     
-    -- Clean suffix casing
-    s = s:sub(1,1):upper() .. s:sub(2):lower()
-    local mult = _7[s]
-    return mult and (n * mult) or nil
+    if not numStr then return nil end
+    local num = tonumber(numStr)
+    
+    if suffix and suffix ~= "" then
+        local multiplier = _7[suffix]
+        if multiplier then
+            return num * multiplier
+        else
+            return math.huge
+        end
+    end
+    return num
 end
 
 local _9 = _6 and _6:FindFirstChild("\80\117\114\99\104\97\115\101\115")
@@ -105,56 +112,65 @@ local _10 = _3:CreateToggle({
             end
         end)
 
+        -- Rewritten loop to prioritize cheapest to highest purchases
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
+                    local validButtons = {}
+                    local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
+
+                    -- Step 1: Scan and gather valid targets
                     for _, fld in pairs(_9:GetChildren()) do
                         if fld:FindFirstChild("\66\117\116\116\111\110\115") then
                             for _, z in pairs(fld.Buttons:GetChildren()) do
+                                local targets = {}
                                 if z:IsA("\70\111\108\100\101\114") then
-                                    for _, btn in pairs(z:GetChildren()) do
-                                        if btn:GetAttribute("\83\104\111\119\110") and btn:GetAttribute("\69\110\97\98\108\101\100") and not btn:GetAttribute("\80\117\114\99\104\97\115\101\100") and btn:FindFirstChild("\66\117\116\116\111\110") and btn.Button:FindFirstChild("\71\117\105") and btn.Button.Gui:FindFirstChild("\80\114\105\99\101") then
-                                            local prc = _8(btn.Button.Gui.Price.Text)
-                                            local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
-                                            
-                                            -- Double validation check: ensure value calculation is successful and affordable
-                                            local affordable = (prc ~= nil) and (csh ~= nil) and (prc <= csh)
-                                            updateESP(btn.Button, affordable)
-
-                                            if affordable and getgenv().farmsettings.purchase then
-                                                if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
-                                                    _5.Character.HumanoidRootPart.CFrame = btn.Button.CFrame + Vector3.new(0, 2, 0)
-                                                    task.wait(0.05)
-                                                end
-                                                if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
-                                                    firetouchinterest(_5.Character.Head, btn.Button, true) task.wait() firetouchinterest(_5.Character.Head, btn.Button, false)
-                                                end
-                                            end
-                                        end
-                                    end
+                                    targets = z:GetChildren()
                                 elseif z:IsA("\77\111\100\101\108") then
-                                    if z:GetAttribute("\83\104\111\119\110") and z:GetAttribute("\69\110\97\98\108\101\100") and not z:GetAttribute("\80\117\114\99\104\97\115\101\100") and z:FindFirstChild("\66\117\116\116\111\110") and z.Button:FindFirstChild("\71\117\105") and z.Button.Gui:FindFirstChild("\80\114\105\99\101") then
-                                        local prc = _8(z.Button.Gui.Price.Text)
-                                        local csh = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
-                                        
-                                        local affordable = (prc ~= nil) and (csh ~= nil) and (prc <= csh)
-                                        updateESP(z.Button, affordable)
+                                    targets = {z}
+                                end
 
-                                        if affordable and getgenv().farmsettings.purchase then
-                                            if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
-                                                _5.Character.HumanoidRootPart.CFrame = z.Button.CFrame + Vector3.new(0, 2, 0)
-                                                task.wait(0.05)
-                                            end
-                                            if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
-                                                firetouchinterest(_5.Character.Head, z.Button, true) task.wait() firetouchinterest(_5.Character.Head, z.Button, false)
-                                            end
+                                for _, btn in pairs(targets) do
+                                    if btn:GetAttribute("\83\104\111\119\110") and btn:GetAttribute("\69\110\97\98\108\101\100") and not btn:GetAttribute("\80\117\114\99\104\97\115\101\100") and btn:FindFirstChild("\66\117\116\116\111\110") and btn.Button:FindFirstChild("\71\117\105") and btn.Button.Gui:FindFirstChild("\80\114\105\99\101") then
+                                        local prc = _8(btn.Button.Gui.Price.Text)
+                                        local affordable = (prc ~= nil) and (csh ~= nil) and (prc <= csh)
+                                        
+                                        updateESP(btn.Button, affordable)
+
+                                        if affordable then
+                                            table.insert(validButtons, {instance = btn.Button, price = prc})
                                         end
                                     end
                                 end
                             end
                         end
                     end
+
+                    -- Step 2: Sort gathered elements from cheapest to most expensive
+                    table.sort(validButtons, function(a, b)
+                        return a.price < b.price
+                    end)
+
+                    -- Step 3: Execute teleport and purchase sequential operations
+                    if #validButtons > 0 and getgenv().farmsettings.purchase then
+                        for _, item in ipairs(validButtons) do
+                            -- Re-verify cash balance dynamically before finalizing a purchase transaction
+                            local currentCash = _5:FindFirstChild("\108\101\97\100\101\114\115\116\97\116\115") and _5.leaderstats:FindFirstChild("\67\97\115\104") and _8(tostring(_5.leaderstats.Cash.Value))
+                            if currentCash and item.price <= currentCash then
+                                if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
+                                    _5.Character.HumanoidRootPart.CFrame = item.instance.CFrame + Vector3.new(0, 2, 0)
+                                    task.wait(0.05)
+                                end
+                                if _5.Character and _5.Character:FindFirstChild("\72\101\97\100") then
+                                    firetouchinterest(_5.Character.Head, item.instance, true) 
+                                    task.wait() 
+                                    firetouchinterest(_5.Character.Head, item.instance, false)
+                                end
+                            end
+                        end
+                    end
                 end)
+                
                 pcall(function()
                     if not getgenv().farmsettings.cashdrop then return end
                     local cd = workspace:FindFirstChild("\67\97\115\104\68\114\111\112\115")
@@ -190,7 +206,7 @@ local _10 = _3:CreateToggle({
     end
 })
 local _11 = _3:CreateLabel("\83\101\116\116\105\110\103\115\58")
-local _12 = _3:CreateToggle({Name = "\65\117\116\111\32\80\117\114\99\104\97\115\101", CurrentValue = true, Flag = "\65\117\116\111\80\117\114\99\104\97\115\101", Callback = function(v) getgenv().farmsettings.purchase = v end})
+local _12 = _3:CreateToggle({Name = "\65\117\116\111\32\80\117\114\99\104\97\115\101", CurrentValue = true, Flag = "\65\117\116\101\80\117\114\99\104\97\115\101", Callback = function(v) getgenv().farmsettings.purchase = v end})
 local _13 = _3:CreateToggle({Name = "\65\117\116\111\32\67\111\108\108\101\99\116", CurrentValue = true, Flag = "\65\117\116\111\67\111\108\108\101\99\116", Callback = function(v) getgenv().farmsettings.collect = v end})
 local _14 = _3:CreateToggle({Name = "\65\117\116\111\32\85\112\103\114\97\100\101", CurrentValue = true, Flag = "\65\117\116\111\85\112\103\114\97\100\101", Callback = function(v) getgenv().farmsettings.upgrade = v end})
 local _15 = _3:CreateToggle({Name = "\65\117\116\111\32\67\97\115\104\32\68\114\111\112", CurrentValue = true, Flag = "\65\117\116\111\67\97\115\104\68\114\111\112", Callback = function(v) getgenv().farmsettings.cashdrop = v end})
