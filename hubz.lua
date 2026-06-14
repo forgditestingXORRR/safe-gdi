@@ -17,7 +17,7 @@ task.spawn(function()
         attempts = attempts + 1
         success = pcall(function()
             StarterGui:SetCore("ChatMakeSystemMessage", {
-                Text = "Thank you for using my script!",
+                Text = "Thank you for using my script! Press [Right Shift] to toggle UI.",
                 Color = Color3.fromRGB(0, 255, 140),
                 Font = Enum.Font.GothamBold,
                 TextSize = 14
@@ -48,7 +48,9 @@ local theme = {
     ButtonText = Color3.fromRGB(255, 255, 255),
     Accent = Color3.fromRGB(0, 140, 70),
     TabBtnBg = Color3.fromRGB(35, 35, 40),
-    ScriptBtnBg = Color3.fromRGB(45, 45, 52)
+    TabBtnActive = Color3.fromRGB(50, 50, 58),
+    ScriptBtnBg = Color3.fromRGB(45, 45, 52),
+    Destructive = Color3.fromRGB(140, 30, 30)
 }
 
 -- 2. MAIN INTERFACE FRAMEWORK --
@@ -97,7 +99,7 @@ TitleText.BackgroundTransparency = 1
 TitleText.Position = UDim2.new(0.03, 0, 0, 0)
 TitleText.Size = UDim2.new(0.8, 0, 1, 0)
 TitleText.Font = Enum.Font.GothamBold
-TitleText.Text = "Advanced Environment & Analysis Hub"
+TitleText.Text = "Advanced Environment & Analysis Hub [RShift]"
 TitleText.TextSize = 14
 TitleText.TextColor3 = theme.Text
 
@@ -114,6 +116,7 @@ UIListLayout_Side.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout_Side.Padding = UDim.new(0, 6)
 UIListLayout_Side.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
+local sidebarButtons = {}
 local function createSideBtn(text, order)
     local btn = Instance.new("TextButton")
     local corn = Instance.new("UICorner")
@@ -127,6 +130,7 @@ local function createSideBtn(text, order)
     btn.Parent = Sidebar
     corn.CornerRadius = UDim.new(0, 6)
     corn.Parent = btn
+    table.insert(sidebarButtons, btn)
     return btn
 end
 
@@ -172,6 +176,7 @@ PreloadContainer.Visible = false
 AnalysisContainer.Visible = false
 MentionsContainer.Visible = false
 HubsContainer.Visible = false
+MenuTabBtn.BackgroundColor3 = theme.TabBtnActive
 
 -- 3. GAME HUB TAB INTERFACE --
 local HeaderFrame = Instance.new("Frame")
@@ -216,7 +221,7 @@ local function createMenuLabel(text, font, size, color, parent)
 end
 
 local GameTitle = createMenuLabel("Loading Title...", Enum.Font.GothamBold, 15, theme.Text, InfoLayoutFrame)
-local GameCreator = createMenuLabel("Loading Creator...", Enum.Font.GothamMedium, 12, theme.SubText, InfoLayoutFrame)
+local GameCreator = createMenuLabel("Developer: Loading...", Enum.Font.GothamMedium, 12, theme.SubText, InfoLayoutFrame)
 
 createMenuLabel("--- Network Statistics ---", Enum.Font.GothamBold, 12, theme.Accent, MenuContainer)
 local GlobalPlayers = createMenuLabel("🌐 Global Active Users (All Servers): Fetching...", Enum.Font.GothamMedium, 12, theme.Text, MenuContainer)
@@ -245,7 +250,7 @@ task.spawn(function()
     end
 
     local universeId = game.GameId
-    local createdTimestamp = os.time() - 120560400 -- Fallback calculation frame
+    local createdTimestamp = os.time() - 120560400 
     local universeSuccess, universeInfo = pcall(function()
         return game:HttpGetAsync("https://games.roblox.com/v1/games?universeIds=" .. universeId)
     end)
@@ -294,11 +299,13 @@ task.spawn(function()
     Players.PlayerRemoving:Connect(refreshCounts)
 end)
 
--- 4. EXECUTOR TAB INTERFACE --
+-- 4. EXECUTOR TAB INTERFACE (MODIFIED WITH CLEAR BTN) --
 local ScripterBox = Instance.new("TextBox")
 local UICorner_Box = Instance.new("UICorner")
 local ExecuteBtn = Instance.new("TextButton")
 local UICorner_Exec = Instance.new("UICorner")
+local ClearBtn = Instance.new("TextButton")
+local UICorner_Clear = Instance.new("UICorner")
 
 ScripterBox.Parent = CustomContainer
 ScripterBox.Position = UDim2.new(0.04, 0, 0.05, 0)
@@ -316,9 +323,10 @@ ScripterBox.TextYAlignment = Enum.TextYAlignment.Top
 UICorner_Box.CornerRadius = UDim.new(0, 6)
 UICorner_Box.Parent = ScripterBox
 
+-- Resized to sit comfortably next to Clear button
 ExecuteBtn.Parent = CustomContainer
 ExecuteBtn.Position = UDim2.new(0.04, 0, 0.80, 0)
-ExecuteBtn.Size = UDim2.new(0.92, 0, 0, 36)
+ExecuteBtn.Size = UDim2.new(0.58, 0, 0, 36)
 ExecuteBtn.BackgroundColor3 = theme.Accent
 ExecuteBtn.TextColor3 = theme.ButtonText
 ExecuteBtn.Font = Enum.Font.GothamBold
@@ -327,6 +335,22 @@ ExecuteBtn.TextSize = 13
 
 UICorner_Exec.CornerRadius = UDim.new(0, 6)
 UICorner_Exec.Parent = ExecuteBtn
+
+ClearBtn.Parent = CustomContainer
+ClearBtn.Position = UDim2.new(0.65, 0, 0.80, 0)
+ClearBtn.Size = UDim2.new(0.31, 0, 0, 36)
+ClearBtn.BackgroundColor3 = theme.Destructive
+ClearBtn.TextColor3 = theme.ButtonText
+ClearBtn.Font = Enum.Font.GothamBold
+ClearBtn.Text = "Clear Text"
+ClearBtn.TextSize = 13
+
+UICorner_Clear.CornerRadius = UDim.new(0, 6)
+UICorner_Clear.Parent = ClearBtn
+
+ClearBtn.MouseButton1Click:Connect(function()
+    ScripterBox.Text = ""
+end)
 
 -- 5. ANALYSIS & ENVIRONMENT COMPLIANCE (UNC) --
 local function createStatLabel(title, parent)
@@ -377,7 +401,6 @@ local function runUncTest()
 end
 task.spawn(runUncTest)
 
--- EXECUTOR QUALITY CHECKER PRINTER BUTTON (F9 OUTPUT) --
 local ExecQualityBtn = Instance.new("TextButton")
 local UICorner_ExecQuality = Instance.new("UICorner")
 
@@ -411,7 +434,6 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         end
     end
 
-    -- 1. Identity Level (Adaptive check for alternative signatures)
     checkFeature("Identity Level (getidentity)", function()
         local getIdent = getidentity or getthreadidentity or getthreadcontext or (syn and syn.get_thread_identity)
         if not getIdent then error("API completely missing from global/libraries") end
@@ -421,7 +443,6 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         return true
     end)
 
-    -- 2. Function Existence (Checks global and library fallbacks)
     checkFeature("Function Existence Checks (getgc, getreg, getupvalues)", function()
         local ggc = getgc or (ext and ext.getgc)
         local greg = getreg or debug.getregistry or (ext and ext.getreg)
@@ -432,7 +453,6 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         return true
     end)
 
-    -- 3. Debug Library Tests
     checkFeature("Debug Library Tests (debug.getinfo)", function()
         local getinfo = debug and debug.getinfo
         if type(getinfo) ~= "function" then error("debug.getinfo is missing or protected") end
@@ -441,7 +461,6 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         return true
     end)
 
-    -- 4. UNC / Hook Tests
     checkFeature("UNC/Hook Tests (hookfunction, newcclosure)", function()
         local hook = hookfunction or replaceclosure or (syn and syn.hook_function)
         local ncc = newcclosure or (syn and syn.new_c_closure)
@@ -449,7 +468,6 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         return true
     end)
 
-    -- 5. Filesystem Tests
     checkFeature("Filesystem Tests (isfile, writefile)", function()
         local isf = isfile or (fs and fs.isfile)
         local wrf = writefile or (fs and fs.writefile)
@@ -457,25 +475,21 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         return true
     end)
 
-    -- 6. Drawing API Tests
     checkFeature("Drawing API Tests (Drawing.new)", function()
         if not Drawing or type(Drawing.new) ~= "function" then error("Drawing text/vector engine instantiation failed") end
         return true
     end)
 
-    -- 7. Request API Tests
     checkFeature("Request API Tests (request)", function()
         local reqFunc = request or http_request or (http and http.request) or (syn and syn.request)
         if not reqFunc then error("Network mesh socket transmission layer unavailable") end
         return true
     end)
 
-    -- 8. Execution Speed Test (Optimized to utilize local registers for pure speed)
     checkFeature("Execution Speed Test (10M Loops - Optimized)", function()
         local clock = os.clock
         local start = clock()
         local counter = 0
-        -- Pure localized internal registration loop for speed precision
         for i = 1, 10000000 do 
             counter = counter + 1 
         end
@@ -484,7 +498,6 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
         return true
     end)
 
-    -- 9. UNC Stability Test
     checkFeature("UNC Stability Test (Hook Dummy Error Prevention)", function()
         local hook = hookfunction or replaceclosure or (syn and syn.hook_function)
         if not hook then error("hookfunction/replaceclosure required to verify stability configuration") end
@@ -595,31 +608,38 @@ createLoadableScriptBtn("https://pastebin.com/jyVVfCGk", "loadstring(game:HttpGe
 createLoadableScriptBtn("loadstring(game:HttpGet(\"https://raw.githubusercontent.com/0Ben1/fe./main/Fling%20GUI\"))()", "loadstring(game:HttpGet('https://raw.githubusercontent.com/0Ben1/fe./main/Fling%20GUI'))()", MentionsContainer)
 createLoadableScriptBtn("https://pastebin.com/uTmdY23g", "loadstring(game:HttpGet('https://pastebin.com/raw/uTmdY23g'))()", MentionsContainer)
 
--- 9. MY HUBS TAB INTERFACE --
+-- 9. MY HUBS TAB INTERFACE (EXPANDED LOADSTRINGS) --
 createMenuLabel("--- Developer Custom Hubs ---", Enum.Font.GothamBold, 14, theme.Accent, HubsContainer)
+createLoadableScriptBtn("SimpleSpy V3 (Remote Event Logger)", "loadstring(game:HttpGet('https://raw.githubusercontent.com/78n/SimpleSpy/main/SimpleSpySource.lua'))()", HubsContainer)
+createLoadableScriptBtn("CMD-X (Advanced Admin Commands)", "loadstring(game:HttpGet('https://raw.githubusercontent.com/CMD-X/CMD-X/master/Source'))()", HubsContainer)
+createLoadableScriptBtn("Unnamed ESP (Universal Player Tracker)", "loadstring(game:HttpGet('https://raw.githubusercontent.com/ic3w0lf22/Unnamed-ESP/master/UntitledESP.lua'))()", HubsContainer)
 createLoadableScriptBtn("MM2 HAX", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/MM2HAX.lua'))()", HubsContainer)
 createLoadableScriptBtn("AIMBOT", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/roblox.lua'))()", HubsContainer)
 createLoadableScriptBtn("Infinite Yield", "loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()", HubsContainer)
 createLoadableScriptBtn("Copyable Script", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/copyable.lua'))()", HubsContainer)
 
--- 10. TAB ROUTING & CANVAS FIXES --
-local function switchTab(container)
+-- 10. TAB ROUTING, VISUAL STATES & CANVAS FIXES --
+local function switchTab(container, clickedButton)
     MenuContainer.Visible = (container == MenuContainer)
     CustomContainer.Visible = (container == CustomContainer)
     PreloadContainer.Visible = (container == PreloadContainer)
     AnalysisContainer.Visible = (container == AnalysisContainer)
     MentionsContainer.Visible = (container == MentionsContainer)
     HubsContainer.Visible = (container == HubsContainer)
+    
+    -- Dynamic visual accent tracking for clicked buttons
+    for _, btn in ipairs(sidebarButtons) do
+        btn.BackgroundColor3 = (btn == clickedButton) and theme.TabBtnActive or theme.TabBtnBg
+    end
 end
 
-MenuTabBtn.MouseButton1Click:Connect(function() switchTab(MenuContainer) end)
-CustomTabBtn.MouseButton1Click:Connect(function() switchTab(CustomContainer) end)
-PreloadTabBtn.MouseButton1Click:Connect(function() switchTab(PreloadContainer) end)
-AnalysisTabBtn.MouseButton1Click:Connect(function() switchTab(AnalysisContainer) end)
-MentionsTabBtn.MouseButton1Click:Connect(function() switchTab(MentionsContainer) end)
-HubsTabBtn.MouseButton1Click:Connect(function() switchTab(HubsContainer) end)
+MenuTabBtn.MouseButton1Click:Connect(function() switchTab(MenuContainer, MenuTabBtn) end)
+CustomTabBtn.MouseButton1Click:Connect(function() switchTab(CustomContainer, CustomTabBtn) end)
+PreloadTabBtn.MouseButton1Click:Connect(function() switchTab(PreloadContainer, PreloadTabBtn) end)
+AnalysisTabBtn.MouseButton1Click:Connect(function() switchTab(AnalysisContainer, AnalysisTabBtn) end)
+MentionsTabBtn.MouseButton1Click:Connect(function() switchTab(MentionsContainer, MentionsTabBtn) end)
+HubsTabBtn.MouseButton1Click:Connect(function() switchTab(HubsContainer, HubsTabBtn) end)
 
--- Fix Canvas Resizing Logic dynamically to eliminate clipping or interface lag
 local function autoScaleCanvas(container, layout)
     container.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 30)
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -640,7 +660,7 @@ ExecuteBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Smooth Drag Action Engine
+-- 11. INTERACTIVE DRAG ACTIONS ENGINE --
 local dragging, dragInput, dragStart, startPos
 
 TitleBar.InputBegan:Connect(function(input)
@@ -656,5 +676,15 @@ UserInputService.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - dragStart
         MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- 12. RIGHT SHIFT MINIMIZE ROUTINE --
+local uiStateVisible = true
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        uiStateVisible = not uiStateVisible
+        MainFrame.Visible = uiStateVisible
     end
 end)
