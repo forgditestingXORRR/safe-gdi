@@ -42,7 +42,6 @@ if _6 and _6:FindFirstChild("\82\101\109\111\116\101\115") and _6.Remotes:FindFi
     end)
 end
 
--- ESP Management Helper
 local function updateESP(buttonInstance, shouldDisplay)
     local existing = buttonInstance:FindFirstChild("ButtonESP")
     if shouldDisplay and getgenv().farmsettings.buttonesp then
@@ -63,15 +62,14 @@ local function updateESP(buttonInstance, shouldDisplay)
 end
 
 local _10 = _3:CreateToggle({
-    Name = "\65\117\116\111\102\97\114\109",
+    Name = "\65\117\116\102\97\114\109",
     CurrentValue = false,
-    Flag = "\65\117\116\111\102\97\114\109\84\111\103\103\108\101",
+    Flag = "\65\117\116\102\97\114\109\84\111\103\103\108\101",
     Callback = function(val)
         getgenv().farming = val
         if not getgenv().farming or not _6 then return end
         local st = _6:FindFirstChild("\86\97\108\117\101\115") and _6.Values:FindFirstChild("\73\110\99\111\109\101") and _6.Values.Income:FindFirstChild("\83\116\114\101\97\109\115")
         
-        -- Loop 1: Income Streams
         task.spawn(function()
             while getgenv().farming and _6 and st do
                 if getgenv().farmsettings.collect then
@@ -85,7 +83,6 @@ local _10 = _3:CreateToggle({
             end
         end)
         
-        -- Loop 2: Insta-Upgrade
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
@@ -101,14 +98,12 @@ local _10 = _3:CreateToggle({
             end
         end)
 
-        -- Loop 3: Standard Purchases, World Items, ESP, and Teleporting
         task.spawn(function()
             while getgenv().farming and _6 and _9 do
                 pcall(function()
                     for _, fld in pairs(_9:GetChildren()) do
                         if fld:FindFirstChild("\66\117\116\116\111\110\115") then
                             for _, z in pairs(fld.Buttons:GetChildren()) do
-                                local targetBtn = nil
                                 if z:IsA("\70\111\108\100\101\114") then
                                     for _, btn in pairs(z:GetChildren()) do
                                         if btn:GetAttribute("\83\104\111\119\110") and btn:GetAttribute("\69\110\97\98\108\101\100") and not btn:GetAttribute("\80\117\114\99\104\97\115\101\100") and btn:FindFirstChild("\66\117\116\116\111\110") and btn.Button:FindFirstChild("\71\117\105") and btn.Button.Gui:FindFirstChild("\80\114\105\99\101") then
@@ -119,7 +114,6 @@ local _10 = _3:CreateToggle({
                                             updateESP(btn.Button, affordable)
 
                                             if affordable and getgenv().farmsettings.purchase then
-                                                targetBtn = btn.Button
                                                 if getgenv().farmsettings.buttontp and _5.Character and _5.Character:FindFirstChild("HumanoidRootPart") then
                                                     _5.Character.HumanoidRootPart.CFrame = btn.Button.CFrame + Vector3.new(0, 2, 0)
                                                     task.wait(0.05)
@@ -193,8 +187,6 @@ local _13 = _3:CreateToggle({Name = "\65\117\116\111\32\67\111\108\108\101\99\11
 local _14 = _3:CreateToggle({Name = "\65\117\116\111\32\85\112\103\114\97\100\101", CurrentValue = true, Flag = "\65\117\116\111\85\112\103\114\97\100\101", Callback = function(v) getgenv().farmsettings.upgrade = v end})
 local _15 = _3:CreateToggle({Name = "\65\117\116\111\32\67\97\115\104\32\68\114\111\112", CurrentValue = true, Flag = "\65\117\116\111\67\97\115\104\68\114\111\112", Callback = function(v) getgenv().farmsettings.cashdrop = v end})
 local _16 = _3:CreateToggle({Name = "\65\117\116\111\32\80\105\101\107\117\112\32\70\114\117\105\116", CurrentValue = true, Flag = "\65\117\116\111\80\105\99\107\117\112\70\114\117\105\116", Callback = function(v) getgenv().farmsettings.fruit = v end})
-
--- New UI Additions
 local _19 = _3:CreateToggle({Name = "\66\117\116\116\111\110\32\69\83\80\32\40\65\102\102\111\114\100\97\98\108\101\41", CurrentValue = true, Flag = "\66\117\116\116\111\110\69\83\80", Callback = function(v) getgenv().farmsettings.buttonesp = v end})
 local _20 = _3:CreateToggle({Name = "\65\117\116\111\32\84\80\32\116\111\32\66\117\116\116\111\110", CurrentValue = false, Flag = "\65\117\116\111\84\80\66\117\116\116\111\110", Callback = function(v) getgenv().farmsettings.buttontp = v end})
 
