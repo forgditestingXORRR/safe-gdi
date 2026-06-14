@@ -600,6 +600,7 @@ createMenuLabel("--- Developer Custom Hubs ---", Enum.Font.GothamBold, 14, theme
 createLoadableScriptBtn("MM2 HAX", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/MM2HAX.lua'))()", HubsContainer)
 createLoadableScriptBtn("AIMBOT", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/roblox.lua'))()", HubsContainer)
 createLoadableScriptBtn("Infinite Yield", "loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()", HubsContainer)
+createLoadableScriptBtn("Copyable Script", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/copyable.lua'))()", HubsContainer)
 
 -- 10. TAB ROUTING & CANVAS FIXES --
 local function switchTab(container)
