@@ -41,8 +41,7 @@ local theme = {
     TabBtnBg = Color3.fromRGB(28, 28, 34),
     TabBtnActive = Color3.fromRGB(0, 140, 70),
     ScriptBtnBg = Color3.fromRGB(32, 32, 40),
-    Destructive = Color3.fromRGB(160, 40, 40),
-    LoadingBg = Color3.fromRGB(10, 10, 12)
+    Destructive = Color3.fromRGB(160, 40, 40)
 }
 
 -- Root GUI Container
@@ -55,64 +54,7 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 --========================================================================--
--- 2. DYNAMIC LOADING SCREEN OVERLAY
---========================================================================--
-local LoadingFrame = Instance.new("Frame")
-local LoadingCorner = Instance.new("UICorner")
-local LoadingTitle = Instance.new("TextLabel")
-local LoadingStatus = Instance.new("TextLabel")
-local ProgressBarBg = Instance.new("Frame")
-local ProgressBarFill = Instance.new("Frame")
-local BarCorner1 = Instance.new("UICorner")
-local BarCorner2 = Instance.new("UICorner")
-
-LoadingFrame.Name = "LoadingFrame"
-LoadingFrame.Parent = ScreenGui
-LoadingFrame.Size = UDim2.new(0, 640, 0, 380)
-LoadingFrame.Position = UDim2.new(0.5, -320, 0.5, -190)
-LoadingFrame.BackgroundColor3 = theme.LoadingBg
-LoadingFrame.ZIndex = 100
-
-LoadingCorner.CornerRadius = UDim.new(0, 10)
-LoadingCorner.Parent = LoadingFrame
-
-LoadingTitle.Size = UDim2.new(1, 0, 0, 40)
-LoadingTitle.Position = UDim2.new(0, 0, 0.35, 0)
-LoadingTitle.BackgroundTransparency = 1
-LoadingTitle.Font = Enum.Font.GothamBold
-LoadingTitle.Text = "SYSTEM INITIALIZATION"
-LoadingTitle.TextSize = 20
-LoadingTitle.TextColor3 = theme.Text
-LoadingTitle.ZIndex = 101
-LoadingTitle.Parent = LoadingFrame
-
-LoadingStatus.Size = UDim2.new(1, 0, 0, 30)
-LoadingStatus.Position = UDim2.new(0, 0, 0.47, 0)
-LoadingStatus.BackgroundTransparency = 1
-LoadingStatus.Font = Enum.Font.GothamMedium
-LoadingStatus.Text = "Synchronizing environments..."
-LoadingStatus.TextSize = 12
-LoadingStatus.TextColor3 = theme.EditorText
-LoadingStatus.ZIndex = 101
-LoadingStatus.Parent = LoadingFrame
-
-ProgressBarBg.Size = UDim2.new(0.6, 0, 0, 6)
-ProgressBarBg.Position = UDim2.new(0.2, 0, 0.6, 0)
-ProgressBarBg.BackgroundColor3 = theme.Sidebar
-ProgressBarBg.ZIndex = 101
-ProgressBarBg.Parent = LoadingFrame
-BarCorner1.CornerRadius = UDim.new(1, 0)
-BarCorner1.Parent = ProgressBarBg
-
-ProgressBarFill.Size = UDim2.new(0, 0, 1, 0)
-ProgressBarFill.BackgroundColor3 = theme.TabBtnActive
-ProgressBarFill.ZIndex = 102
-ProgressBarFill.Parent = ProgressBarBg
-BarCorner2.CornerRadius = UDim.new(1, 0)
-BarCorner2.Parent = ProgressBarFill
-
---========================================================================--
--- 3. MAIN DASHBOARD FRAMEWORK
+-- 2. MAIN DASHBOARD FRAMEWORK
 --========================================================================--
 local MainFrame = Instance.new("Frame")
 local UICorner_Main = Instance.new("UICorner")
@@ -143,7 +85,6 @@ MainFrame.Position = UDim2.new(0.5, -320, 0.5, -190)
 MainFrame.BackgroundColor3 = theme.Background
 MainFrame.Active = true
 MainFrame.ClipsDescendants = true
-MainFrame.GroupTransparency = 1 -- Used for smooth intro fading
 
 UICorner_Main.CornerRadius = UDim.new(0, 10)
 UICorner_Main.Parent = MainFrame
@@ -255,7 +196,7 @@ HubsContainer.Visible = false
 MenuTabBtn.BackgroundColor3 = theme.TabBtnActive
 
 --========================================================================--
--- 4. GAME DATA INTERFACE ENGINE
+-- 3. GAME DATA INTERFACE ENGINE
 --========================================================================--
 local HeaderFrame = Instance.new("Frame")
 local FrontpageImage = Instance.new("ImageLabel")
@@ -367,7 +308,7 @@ task.spawn(function()
 end)
 
 --========================================================================--
--- 5. CODE CONSOLE INTERACTION SYSTEM
+-- 4. CODE CONSOLE INTERACTION SYSTEM
 --========================================================================--
 local ScripterBox = Instance.new("TextBox")
 local UICorner_Box = Instance.new("UICorner")
@@ -433,12 +374,12 @@ addButtonFeedback(ExecuteBtn, theme.Accent)
 addButtonFeedback(ClearBtn, theme.Destructive)
 
 --========================================================================--
--- 6. OPTIMIZED UNC TESTING LAYER & STATS
+-- 5. OPTIMIZED BACKGROUND UNC TESTING LAYER & STATS
 --========================================================================--
 local fpsLabel = createMenuLabel("Performance Output: Calculating...", Enum.Font.GothamMedium, 12, theme.Text, AnalysisContainer)
 local pingLabel = createMenuLabel("Data Latency: Calculating...", Enum.Font.GothamMedium, 12, theme.Text, AnalysisContainer)
 createMenuLabel("-----------------------------------------", Enum.Font.GothamBold, 12, theme.SubText, AnalysisContainer)
-local uncLabel = createMenuLabel("UNC Compliance Tracker: Queued...", Enum.Font.GothamBold, 13, theme.EditorText, AnalysisContainer)
+local uncLabel = createMenuLabel("UNC Compliance Tracker: Checking...", Enum.Font.GothamBold, 13, theme.EditorText, AnalysisContainer)
 local uncDetailsLabel = createMenuLabel("Passes: 0 | Fails: 0", Enum.Font.GothamMedium, 12, theme.Text, AnalysisContainer)
 createMenuLabel("-----------------------------------------", Enum.Font.GothamBold, 12, theme.SubText, AnalysisContainer)
 
@@ -471,7 +412,6 @@ local function getGlobal(path)
 end
 
 local function checkUnc(name, callback)
-    UNC_Results.Checked = UNC_Results.Checked + 1
     local isSupported = getGlobal(name) ~= nil
     local executedOk = false
     if isSupported and callback then
@@ -480,19 +420,20 @@ local function checkUnc(name, callback)
         executedOk = true
     end
     
+    UNC_Results.Checked = UNC_Results.Checked + 1
     if executedOk then
         UNC_Results.Passes = UNC_Results.Passes + 1
     else
         UNC_Results.Fails = UNC_Results.Fails + 1
     end
     
-    -- Sync values instantly across loader screen frames
-    local currentRatio = UNC_Results.Checked / 15
-    ProgressBarFill.Size = UDim2.new(currentRatio, 0, 1, 0)
-    LoadingStatus.Text = "Testing interface: " .. name .. "..."
+    -- Dynamically update analysis page metrics as they finish checking
+    local percentage = (UNC_Results.Passes / UNC_Results.Checked) * 100
+    uncLabel.Text = string.format("UNC Framework Score: %.1f%%", percentage)
+    uncDetailsLabel.Text = string.format("Passes: %d  |  Failures Logged: %d", UNC_Results.Passes, UNC_Results.Fails)
 end
 
--- Sequential Execution Routine Context
+-- Fast-Execution Non-Blocking Routine Context
 local function executeEngineVerification()
     checkUnc("cache.invalidate", function()
         local f = Instance.new("Folder")
@@ -500,25 +441,21 @@ local function executeEngineVerification()
         cache.invalidate(f:FindFirstChild("Part"))
         assert(p ~= f:FindFirstChild("Part"))
     end)
-    task.wait(0.02)
     checkUnc("cache.iscached", function() assert(cache.iscached(Instance.new("Part"))) end)
     checkUnc("cloneref", function()
         local p = Instance.new("Part")
         local c = cloneref(p)
         assert(p ~= c and c.Name == p.Name)
     end)
-    task.wait(0.02)
     checkUnc("checkcaller", function() assert(checkcaller()) end)
     checkUnc("hookfunction", function()
         local t = function() return true end
         local r = hookfunction(t, function() return false end)
         assert(t() == false and r() == true)
     end)
-    task.wait(0.02)
     checkUnc("iscclosure", function() assert(iscclosure(print) == true) end)
     checkUnc("isexecutorclosure", function() assert(isexecutorclosure(function() end) == true) end)
     checkUnc("crypt.base64encode", function() assert(crypt.base64encode("test") == "dGVzdA==") end)
-    task.wait(0.02)
     checkUnc("debug.getconstant", function()
         local f = function() print("UNC") end
         assert(debug.getconstant(f, 1) == "print" or debug.getconstant(f, 3) == "UNC")
@@ -528,7 +465,6 @@ local function executeEngineVerification()
         assert(readfile(".unclog.txt") == "speed")
         delfile(".unclog.txt")
     end)
-    task.wait(0.02)
     checkUnc("getrawmetatable", function()
         local mt = {__metatable = "Locked"}
         assert(getrawmetatable(setmetatable({}, mt)) == mt)
@@ -538,28 +474,9 @@ local function executeEngineVerification()
         hookmetamethod(t, "__index", function() return true end)
         assert(t.test == true)
     end)
-    task.wait(0.02)
     checkUnc("identifyexecutor")
     checkUnc("getgenv")
     checkUnc("request")
-    
-    -- Format Complete Pipeline Output
-    local percentage = (UNC_Results.Passes / UNC_Results.Checked) * 100
-    uncLabel.Text = string.format("UNC Framework Score: %.1f%%", percentage)
-    uncDetailsLabel.Text = string.format("Passes: %d  |  Failures Logged: %d", UNC_Results.Passes, UNC_Results.Fails)
-    
-    -- Smoothly Exit Loading Screens
-    LoadingStatus.Text = "Compliance Verification Complete!"
-    task.wait(0.3)
-    
-    local fadeOut = TweenService:Create(LoadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.5, -320, 0.5, -600),
-        BackgroundTransparency = 1
-    })
-    fadeOut:Play()
-    fadeOut.Completed:Connect(function()
-        LoadingFrame:Destroy()
-    end)
 end
 
 -- Trigger Background Diagnostics Sequence
@@ -608,7 +525,7 @@ ExecQualityBtn.MouseButton1Click:Connect(function()
 end)
 
 --========================================================================--
--- 7. DEV PACKAGES LOADER FRAMEWORK
+-- 6. DEV PACKAGES LOADER FRAMEWORK
 --========================================================================--
 local packageDatabase = {
     {Name = "Hydroxide Framework", Url = "https://raw.githubusercontent.com/PolySided/Hydroxide/main/init.lua"},
@@ -642,7 +559,7 @@ for _, item in ipairs(packageDatabase) do
 end
 
 --========================================================================--
--- 8. COMPONENT HELPER ENGINE & DATA POOLS
+-- 7. COMPONENT HELPER ENGINE & DATA POOLS
 --========================================================================--
 local function createLoadableScriptBtn(displayText, executableCode, containerTarget)
     local ScriptBtn = Instance.new("TextButton")
@@ -697,7 +614,7 @@ createLoadableScriptBtn("Infinite Yield", "loadstring(game:HttpGet('https://raw.
 createLoadableScriptBtn("Copyable Script Descriptor", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/copyable.lua'))()", HubsContainer)
 
 --========================================================================--
--- 9. NAVIGATION NAVIGATION AND TWEEN INTERACTION ENGINE
+-- 8. NAVIGATION AND TWEEN INTERACTION ENGINE
 --========================================================================--
 local function switchTab(container, clickedButton)
     MenuContainer.Visible = (container == MenuContainer)
