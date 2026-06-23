@@ -54,7 +54,7 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 --========================================================================--
--- 2. MAIN DASHBOARD FRAMEWORK (Converted to CanvasGroup to fix the crash)
+-- 2. MAIN DASHBOARD FRAMEWORK
 --========================================================================--
 local MainFrame = Instance.new("CanvasGroup") 
 local UICorner_Main = Instance.new("UICorner")
@@ -94,6 +94,7 @@ TitleBar.Name = "TitleBar"
 TitleBar.Parent = MainFrame
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = theme.TitleBar
+TitleBar.Active = true -- Enabled interaction target
 
 UICorner_Title.CornerRadius = UDim.new(0, 10)
 UICorner_Title.Parent = TitleBar
@@ -107,6 +108,7 @@ TitleText.Font = Enum.Font.GothamBold
 TitleText.Text = "Advanced Environment & Analysis Hub [RShift]"
 TitleText.TextSize = 13
 TitleText.TextColor3 = theme.Text
+TitleText.Active = false -- Allows drag selections to pass straight to background panel
 
 Sidebar.Name = "Sidebar"
 Sidebar.Parent = MainFrame
@@ -608,7 +610,7 @@ createLoadableScriptBtn("Infinite Yield", "loadstring(game:HttpGet('https://raw.
 createLoadableScriptBtn("Copyable Script Descriptor", "loadstring(game:HttpGet('https://raw.githubusercontent.com/forgditestingXORRR/safe-gdi/refs/heads/main/copyable.lua'))()", HubsContainer)
 
 --========================================================================--
--- 8. NAVIGATION AND TWEEN INTERACTION ENGINE
+-- 8. NAVIGATION AND DRAGGING ENGAGEMENT SYSTEM
 --========================================================================--
 local function switchTab(container, clickedButton)
     MenuContainer.Visible = (container == MenuContainer)
@@ -653,24 +655,29 @@ ExecuteBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
-local dragging, dragInput, dragStart, startPos
+-- Re-engineered High-Precision Drag Engine
+local dragging, dragStart, startPos
+
 TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
-        TweenService:Create(MainFrame, TweenInfo.new(0.08, Enum.EasingStyle.Out), {
+        TweenService:Create(MainFrame, TweenInfo.new(0.06, Enum.EasingStyle.Out), {
             Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         }):Play()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
     end
 end)
 
