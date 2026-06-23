@@ -54,9 +54,9 @@ ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 --========================================================================--
--- 2. MAIN DASHBOARD FRAMEWORK
+-- 2. MAIN DASHBOARD FRAMEWORK (Converted to CanvasGroup to fix the crash)
 --========================================================================--
-local MainFrame = Instance.new("Frame")
+local MainFrame = Instance.new("CanvasGroup") 
 local UICorner_Main = Instance.new("UICorner")
 local TitleBar = Instance.new("Frame")
 local UICorner_Title = Instance.new("UICorner")
@@ -85,6 +85,7 @@ MainFrame.Position = UDim2.new(0.5, -320, 0.5, -190)
 MainFrame.BackgroundColor3 = theme.Background
 MainFrame.Active = true
 MainFrame.ClipsDescendants = true
+MainFrame.GroupTransparency = 0
 
 UICorner_Main.CornerRadius = UDim.new(0, 10)
 UICorner_Main.Parent = MainFrame
@@ -136,7 +137,6 @@ local function createSideBtn(text, order)
     corn.CornerRadius = UDim.new(0, 6)
     corn.Parent = btn
     
-    -- Smooth interactive hover sequences
     btn.MouseEnter:Connect(function()
         if btn.BackgroundColor3 ~= theme.TabBtnActive then
             TweenService:Create(btn, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(40, 40, 48)}):Play()
@@ -361,7 +361,6 @@ UICorner_Clear.Parent = ClearBtn
 
 ClearBtn.MouseButton1Click:Connect(function() ScripterBox.Text = "" end)
 
--- Button Hover Microtweens
 local function addButtonFeedback(button, normalColor)
     button.MouseEnter:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.15}):Play()
@@ -397,7 +396,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Structural State Storage Engine
 local UNC_Results = { Passes = 0, Fails = 0, Checked = 0 }
 local getgenv = getgenv or function() return getfenv(2) end
 
@@ -427,13 +425,11 @@ local function checkUnc(name, callback)
         UNC_Results.Fails = UNC_Results.Fails + 1
     end
     
-    -- Dynamically update analysis page metrics as they finish checking
     local percentage = (UNC_Results.Passes / UNC_Results.Checked) * 100
     uncLabel.Text = string.format("UNC Framework Score: %.1f%%", percentage)
     uncDetailsLabel.Text = string.format("Passes: %d  |  Failures Logged: %d", UNC_Results.Passes, UNC_Results.Fails)
 end
 
--- Fast-Execution Non-Blocking Routine Context
 local function executeEngineVerification()
     checkUnc("cache.invalidate", function()
         local f = Instance.new("Folder")
@@ -479,10 +475,8 @@ local function executeEngineVerification()
     checkUnc("request")
 end
 
--- Trigger Background Diagnostics Sequence
 task.spawn(executeEngineVerification)
 
--- Diagnostic Quality Configuration Action Button
 local ExecQualityBtn = Instance.new("TextButton")
 local UICorner_ExecQuality = Instance.new("UICorner")
 ExecQualityBtn.Parent = AnalysisContainer
@@ -659,7 +653,6 @@ ExecuteBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Smooth Inertial Drag Calculation Framework
 local dragging, dragInput, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -681,7 +674,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Modern Window Toggle Scaling Routine
 local uiStateVisible = true
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
