@@ -259,10 +259,11 @@ task.spawn(function()
     end
 end)
 
+-- [FIXED]: Better Gun ESP for MM2 that accounts for Models & Parts
 task.spawn(function()
     while true do
         local droppedGun = Workspace:FindFirstChild("GunDrop")
-        if gunEspEnabled and droppedGun and droppedGun:IsA("BasePart") then
+        if gunEspEnabled and droppedGun then
             local highlight = droppedGun:FindFirstChild("GunESP_Cham")
             if not highlight then
                 highlight = Instance.new("Highlight")
@@ -270,25 +271,33 @@ task.spawn(function()
                 highlight.Parent = droppedGun
                 highlight.FillColor = Color3.fromRGB(255, 230, 0)
                 highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.FillTransparency = 0.4
+                highlight.OutlineTransparency = 0.1
             end
-        elseif droppedGun and droppedGun:FindFirstChild("GunESP_Cham") then
+        elseif not gunEspEnabled and droppedGun and droppedGun:FindFirstChild("GunESP_Cham") then
             droppedGun.GunESP_Cham:Destroy()
         end
-        task.wait(0.5)
+        task.wait(0.2)
     end
 end)
 
+-- [FIXED]: Steal Gun teleport logic handles PVInstances (Models/MeshParts) properly
 local function stealGun()
     local droppedGun = Workspace:FindFirstChild("GunDrop")
-    if droppedGun and droppedGun:IsA("BasePart") then
+    if droppedGun and droppedGun:IsA("PVInstance") then
         local hrp = getHumanoidRootPart()
         if hrp then
-            local oldCFrame = hrp.CFrame
-            hrp.CFrame = droppedGun.CFrame
-            task.wait(0.2)
-            hrp.CFrame = oldCFrame
-            Notify("Gun Stolen", "Teleported to dropped gun", 2)
+            local targetCFrame = droppedGun:GetPivot()
+            if targetCFrame then
+                local oldCFrame = hrp.CFrame
+                hrp.CFrame = targetCFrame
+                task.wait(0.25) -- Give the server time to register the touch
+                hrp.CFrame = oldCFrame
+                Notify("Gun Stolen", "Teleported to dropped gun", 2)
+            end
         end
+    else
+        Notify("Status", "No dropped gun found on the map.", 2)
     end
 end
 
@@ -329,7 +338,7 @@ RunService.RenderStepped:Connect(function()
     local character = LocalPlayer.Character
     local hrp = character and character:FindFirstChild("HumanoidRootPart")
     local hum = character and character:FindFirstChildOfClass("Humanoid")
-   
+    
     if aimbotEnabled and character then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
@@ -353,7 +362,7 @@ RunService.RenderStepped:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then flightVelocity = flightVelocity + Camera.CFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then flightVelocity = flightVelocity + Vector3.new(0, 1, 0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then flightVelocity = flightVelocity - Vector3.new(0, 1, 0) end
-       
+        
         if flightVelocity.Magnitude > 0 then
             hrp.Velocity = Vector3.zero
             hrp.CFrame = hrp.CFrame + (flightVelocity.Unit * (flightSpeed / 10))
